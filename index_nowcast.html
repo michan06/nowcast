@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+    crossorigin=""></script>
+<title>Nowcast</title>
+<!-- <script src="js/jquery-3.3.1.min.js"></script> -->
+<style>
+body {
+    padding: 0;
+    margin: 0;
+}
+html, body, #map {
+    height: 100%;
+    width: 100vw;
+}
+</style>    
+</head>
+<body>
+<div id="map"></div>
+<script>
+var nowCastLayer;
+var map = L.map('map').fitWorld();
+//https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
+L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+  attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+}).addTo(map);
+
+map.setView([35.653918,139.857864], 11);
+refreshNowCast();
+
+async function refreshNowCast(){
+    const timetable = await fetch("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json").then(function(response) {
+        return response.json();
+    });
+    console.log(timetable);
+    const baseTime = timetable[0]['basetime'];
+    const validTime = timetable[0]['validtime'];
+    console.log(validTime);
+    const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
+    console.log(url);
+    const prevLayer = nowCastLayer;
+    nowCastLayer = L.tileLayer(url, {maxNativeZoom:10,opacity:0.85,attribution:`${validTime}`})
+    nowCastLayer.addTo(map);
+    if(map.hasLayer(prevLayer)){
+        map.removeLayer(prevLayer);
+    }
+
+    window.setInterval(refreshNowCast, 300000);
+
+}
+
+//https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json
+
+</script>
+</body>
+</html>
