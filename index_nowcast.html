@@ -9,7 +9,10 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
     integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
     crossorigin=""></script>
-<title>Nowcast</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@1.26.0/build/global/luxon.min.js"></script>
+    <title>Nowcast</title>
 <!-- <script src="js/jquery-3.3.1.min.js"></script> -->
 <style>
 body {
@@ -26,37 +29,134 @@ html, body, #map {
 <div id="map"></div>
 <script>
 var nowCastLayer;
+var himawariLayer;
+var nowCastTimeList;
+var himawariTimeList;
+var isPlay = false;
 var map = L.map('map').fitWorld();
 //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
-L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+var seamLessPhotoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+//L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
   attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
-}).addTo(map);
+})
+seamLessPhotoLayer.addTo(map);
+var stdLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+    attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+});
+const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
 
-map.setView([35.653918,139.857864], 11);
+var baseLayers = {
+    "Standard": stdLayer,
+    "Seamless Photo": seamLessPhotoLayer
+};
+
+var overlays = {
+    // "Nowcast": nowCastLayer,
+    // "Himawari": himawariLayer
+};
+
+L.control.layers(baseLayers, overlays).addTo(map);
+
+L.easyButton('◀', function(btn, map){
+    playNowCast();
+}).addTo( map );
+L.easyButton('◀', function(btn, map){
+    playHimawari();
+}).addTo( map );
+
+
+map.setView([35.653918,139.857864], 10);
 refreshNowCast();
+refreshHimawari();
+window.setInterval(refreshHimawari, 150000);
+window.setInterval(refreshNowCast, 300000);
+
 
 async function refreshNowCast(){
-    const timetable = await fetch("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json").then(function(response) {
+    if(isPlay) return;
+    nowCastTimeList = await fetch("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json").then(function(response) {
         return response.json();
     });
-    console.log(timetable);
-    const baseTime = timetable[0]['basetime'];
-    const validTime = timetable[0]['validtime'];
-    console.log(validTime);
+    // console.log(nowCastTimeList);
+    const baseTime = nowCastTimeList[0]['basetime'];
+    const validTime = nowCastTimeList[0]['validtime'];
+    console.log(`${new Date()}:${validTime}`);
     const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
     console.log(url);
-    const prevLayer = nowCastLayer;
-    nowCastLayer = L.tileLayer(url, {maxNativeZoom:10,opacity:0.85,attribution:`${validTime}`})
-    nowCastLayer.addTo(map);
-    if(map.hasLayer(prevLayer)){
-        map.removeLayer(prevLayer);
+    if(!nowCastLayer){
+        console.log(`new nowCastLayer`);
+        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85,attribution:`Nowcast:${validTime}`})
+        nowCastLayer.addTo(map);
+    }else{
+        console.log(`setUrl nowCastLayer`);
+        nowCastLayer.setUrl(url);
     }
-
-    window.setInterval(refreshNowCast, 300000);
 
 }
 
-//https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json
+// https://www.jma.go.jp/bosai/himawari/data/satimg/20210406040000/jp/20210406040000/B13/TBB/6/54/26.jpg
+
+async function refreshHimawari(){
+    if(isPlay) return;
+    himawariTimeList = await fetch("https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_jp.json").then(function(response) {
+        return response.json();
+    });
+    // console.log(himawariTimeList);
+    const baseTime = himawariTimeList[himawariTimeList.length-1]['basetime'];
+    const validTime = himawariTimeList[himawariTimeList.length-1]['validtime'];
+    console.log(`${new Date()}:${validTime}`);
+    const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
+    console.log(url);
+    if(!himawariLayer){
+        console.log(`new himawariLayer`);
+        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70,attribution:`Himawari:${validTime}`})
+        himawariLayer.addTo(map);
+    }else{
+        console.log(`setUrl himawariLayer`);
+        himawariLayer.setUrl(url);
+    }
+
+
+}
+
+async function playNowCast(){
+    isPlay = true;
+    for(time of nowCastTimeList){
+        const baseTime = time['basetime'];
+        const validTime = time['validtime'];
+        console.log(`${new Date()}:${validTime}`);
+        const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
+        console.log(url);
+        nowCastLayer.setUrl(url);
+        var rest = 2000;
+        while(nowCastLayer.isLoading()){
+            await sleep(10);
+            rest = rest - 10;
+        }
+        await sleep(rest);
+    }
+    isPlay = false;
+
+}
+
+async function playHimawari(){
+    isPlay = true;
+    for(time of himawariTimeList){
+        const baseTime = time['basetime'];
+        const validTime = time['validtime'];
+        console.log(`${new Date()}:${validTime}`);
+        const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
+        himawariLayer.setUrl(url2);
+        var rest = 2000;
+        while(himawariLayer.isLoading()){
+            await sleep(10);
+            rest = rest - 10;
+        }
+        await sleep(rest);
+    }
+    isPlay = false;
+
+}
 
 </script>
 </body>
