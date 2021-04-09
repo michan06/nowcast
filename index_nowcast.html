@@ -207,6 +207,7 @@ async function playNowCast(){
         }
         await sleep(rest);
         if(!isPlay){
+            if(playInfoButton) map.removeControl(playInfoButton)
             break;
         }
 
@@ -224,6 +225,7 @@ async function playNowCast(){
         playInfoButton = new playInfo()    
         map.addControl(playInfoButton)
     }
+    if(playInfoButton) map.removeControl(playInfoButton)
     isPlay = false;
 }
 
@@ -242,6 +244,7 @@ async function playHimawari(){
         }
         await sleep(rest);
         if(!isPlay){
+            if(playInfoButton) map.removeControl(playInfoButton)
             break;
         }
         if(playInfoButton) map.removeControl(playInfoButton)
@@ -258,6 +261,7 @@ async function playHimawari(){
         playInfoButton = new playInfo()    
         map.addControl(playInfoButton)
     }
+    if(playInfoButton) map.removeControl(playInfoButton)
     isPlay = false;
 
 }
