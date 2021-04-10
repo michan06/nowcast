@@ -157,8 +157,10 @@ async function refreshNowCast(){
     const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
     console.log(url);
     if(!nowCastLayer){
+        // 
         console.log(`new nowCastLayer`);
-        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85,attribution:'「雨雲の動き」(気象庁ホームページより)'});
+        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85,
+            attribution:"<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"});
         nowCastLayer.addTo(map);
         layerControl.addOverlay(nowCastLayer,`Nowcast`);
     }else{
@@ -184,7 +186,8 @@ async function refreshHimawari(){
     console.log(url);
     if(!himawariLayer){
         console.log(`new himawariLayer`);
-        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70,attribution:'「気象衛星ひまわり雲頂強調画像」(気象庁ホームページより)'});
+        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70,
+            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり雲頂強調画像</a>"});
         himawariLayer.addTo(map);
         layerControl.addOverlay(himawariLayer,`Himawari`);
     }else{
