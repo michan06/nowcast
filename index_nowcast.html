@@ -87,43 +87,56 @@ var refreshButton  = L.Control.extend({
     })
 map.addControl(new refreshButton())
 
-var NowcastButton = L.Control.extend({
-        options: {
-            position: 'topleft'
-        },
-        onAdd: function(m) {
-            var btn = L.DomUtil.create('button')
-            btn.innerText = '☂ ▶'
-            L.DomEvent.on(btn, 'click', function() {
-                if(!isPlay){
-                    playNowCast();
-                }else{
-                    isPlay = false;
-                }
-            })
-            return btn
-        }
-    })
-map.addControl(new NowcastButton())
+// https://gist.github.com/ejh/2935327
+L.Control.layerButton = L.Control.extend({
+    options: {
+        position: 'bottomleft'
+    },
+    initialize: function (options) {
+        this._button = {};
+        this.setButton(options);
+    },
+    setButton: function (options) {
+        var button = {
+        'text': options.text,                 //string
+        'iconUrl': options.iconUrl,           //string
+        'onClick': options.onClick,           //callback function
+        'hideText': !!options.hideText,         //forced bool
+        'maxWidth': options.maxWidth || 70,     //number
+        'doToggle': options.toggle,			//bool
+        'toggleStatus': false					//bool
+        };
 
-var himawariButton  = L.Control.extend({
-        options: {
-            position: 'topleft'
-        },
-        onAdd: function(m) {
-            var btn = L.DomUtil.create('button')
-            btn.innerText = '☁ ▶'
-            L.DomEvent.on(btn, 'click', function() {
-                if(!isPlay){
-                    playHimawari();
-                }else{
-                    isPlay = false;
-                }
-            })
-            return btn
-        }
-    })
-map.addControl(new himawariButton())
+        this._button = button;
+        // this._update();
+    },    
+    onAdd: function(map) {
+        // leaflet-buttons-control-toggleon
+        this.button = L.DomUtil.create('button','leaflet-control-button');
+        this.button.innerText = this._button.text;
+
+        L.DomEvent
+            .addListener(this.button, 'click', this._button.onClick,this)
+        return this.button;
+    },
+    onRemove: function(map) {
+        // Nothing to do here
+    },
+    setText: function (text) {
+        this.button.innerText = text;
+        this._button.text = text;
+
+        return this._button.text;
+    },
+});
+
+L.Control.buttonInfo = function(opts) {
+    return new L.Control.layerButton(opts);
+}
+nowcastInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Nowcast', onClick:playNowCast })
+nowcastInfo.addTo(map);
+himawariInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Himawari',onClick:playHimawari })
+himawariInfo.addTo(map);
 
 // map.setView([35.653918,139.857864], 8);
 
@@ -133,7 +146,7 @@ window.setInterval(refreshHimawari, 150000);
 window.setInterval(refreshNowCast, 300000);
 
 async function refreshNowCast(){
-    if(isPlay) return;
+    isPlay = false;
     nowCastTimeList = await fetch("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json").then(function(response) {
         return response.json();
     });
@@ -149,19 +162,18 @@ async function refreshNowCast(){
         console.log(`new nowCastLayer`);
         nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85});
         nowCastLayer.addTo(map);
-        layerControl.addOverlay(nowCastLayer,`Nowcast(${baseTimeDt})`);
+        layerControl.addOverlay(nowCastLayer,`Nowcast`);
     }else{
         console.log(`setUrl nowCastLayer`);
-        layerControl.removeLayer(nowCastLayer);
-        layerControl.addOverlay(nowCastLayer,`Nowcast(${baseTimeDt})`);
         nowCastLayer.setUrl(url);
     }
+    nowcastInfo.setText(`☂ ▶:${baseTimeDt}`);
 }
 
 // https://www.jma.go.jp/bosai/himawari/data/satimg/20210406040000/jp/20210406040000/B13/TBB/6/54/26.jpg
 
 async function refreshHimawari(){
-    if(isPlay) return;
+    isPlay = false;
     himawariTimeList = await fetch("https://www.jma.go.jp/bosai/himawari/data/satimg/targetTimes_jp.json").then(function(response) {
         return response.json();
     });
@@ -176,20 +188,23 @@ async function refreshHimawari(){
         console.log(`new himawariLayer`);
         himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70});
         himawariLayer.addTo(map);
-        layerControl.addOverlay(himawariLayer,`Himawari(${baseTimeDt})`);
+        layerControl.addOverlay(himawariLayer,`Himawari`);
     }else{
         console.log(`setUrl himawariLayer`);
-        layerControl.removeLayer(himawariLayer);
-        layerControl.addOverlay(himawariLayer,`Himawari(${baseTimeDt})`);
         himawariLayer.setUrl(url);
     }
+    himawariInfo.setText(`☁ ▶:${baseTimeDt}`);
 
 }
 
 async function playNowCast(){
+    if(isPlay){
+        isPlay = false;
+        return;
+    }
     isPlay = true;
     const timelist = nowCastTimeList.sort(function (a, b) {
-    return (a.baseTime < b.baseTime ? 1 : -1);
+        return (a.baseTime < b.baseTime ? 1 : -1);
     })
     console.log(timelist);
     for(time of timelist ){
@@ -207,33 +222,29 @@ async function playNowCast(){
         }
         await sleep(rest);
         if(!isPlay){
-            if(playInfoButton) map.removeControl(playInfoButton)
             break;
         }
+        nowcastInfo.setText(`☂ ▶:${baseTimeDt}`);
 
-        if(playInfoButton) map.removeControl(playInfoButton)
-        playInfo = L.Control.extend({
-                options: {
-                    position: 'topright'
-                },
-                onAdd: function(m) {
-                    var btn = L.DomUtil.create('button')
-                    btn.innerText = baseTimeDt
-                    return btn
-                }
-            })
-        playInfoButton = new playInfo()    
-        map.addControl(playInfoButton)
     }
-    if(playInfoButton) map.removeControl(playInfoButton)
     isPlay = false;
 }
 
 async function playHimawari(){
+    if(isPlay){
+        isPlay = false;
+        return;
+    }
     isPlay = true;
-    for(time of himawariTimeList){
+    // for(time of himawariTimeList){
+    const timelist = nowCastTimeList.sort(function (a, b) {
+        return (a.baseTime < b.baseTime ? 1 : -1);
+    })
+
+    for(time of timelist){
         const baseTime = time['basetime'];
         const validTime = time['validtime'];
+        const baseTimeDt = moment(baseTime+" +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD hh:mm:ss");
         console.log(`${new Date()}:${validTime}`);
         const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
         himawariLayer.setUrl(url2);
@@ -244,26 +255,11 @@ async function playHimawari(){
         }
         await sleep(rest);
         if(!isPlay){
-            if(playInfoButton) map.removeControl(playInfoButton)
             break;
         }
-        if(playInfoButton) map.removeControl(playInfoButton)
-        playInfo  = L.Control.extend({
-                options: {
-                    position: 'topright'
-                },
-                onAdd: function(m) {
-                    var btn = L.DomUtil.create('button')
-                    btn.innerText = baseTime
-                    return btn
-                }
-            })
-        playInfoButton = new playInfo()    
-        map.addControl(playInfoButton)
+        himawariInfo.setText(`☁ ▶:${baseTimeDt}`);
     }
-    if(playInfoButton) map.removeControl(playInfoButton)
     isPlay = false;
-
 }
 
 </script>
