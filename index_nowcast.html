@@ -9,8 +9,6 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
     integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
     crossorigin=""></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous"></script>
     <title>Nowcast</title>
 <!-- <script src="js/jquery-3.3.1.min.js"></script> -->
@@ -160,7 +158,7 @@ async function refreshNowCast(){
     console.log(url);
     if(!nowCastLayer){
         console.log(`new nowCastLayer`);
-        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85});
+        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85,attribution:'「雨雲の動き」(気象庁ホームページより)'});
         nowCastLayer.addTo(map);
         layerControl.addOverlay(nowCastLayer,`Nowcast`);
     }else{
@@ -186,7 +184,7 @@ async function refreshHimawari(){
     console.log(url);
     if(!himawariLayer){
         console.log(`new himawariLayer`);
-        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70});
+        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70,attribution:'「気象衛星ひまわり雲頂強調画像」(気象庁ホームページより)'});
         himawariLayer.addTo(map);
         layerControl.addOverlay(himawariLayer,`Himawari`);
     }else{
