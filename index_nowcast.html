@@ -182,7 +182,7 @@ async function refreshHimawari(){
     const validTime = himawariTimeList[himawariTimeList.length-1]['validtime'];
     const baseTimeDt = moment(baseTime+" +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD hh:mm:ss");
     console.log(`${new Date()}:${validTime}`);
-    const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
+    const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/REP/ETC/{z}/{x}/{y}.jpg`;
     console.log(url);
     if(!himawariLayer){
         console.log(`new himawariLayer`);
