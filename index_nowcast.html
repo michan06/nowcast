@@ -36,7 +36,7 @@ var playTimelist;
 var isPlay = false;
 var opacityNowCast = 0.85;
 var opacityHimawari = 0.7;
-var optHimawari = 'REP/ETC'; // 'B13/TBB'; // 赤外
+var optHimawari = 'B13/TBB'; // 'B13/TBB'; // 赤外 //'REP/ETC' // トゥルーカラー
 var playInfoButton;
 var map = L.map('map').fitWorld();
 map.setView([35.653918,139.857864], 8);
@@ -156,7 +156,7 @@ nowcastInfo.addTo(map);
 
 nowcastButton = L.Control.buttonInfo({ position: 'topright',text:'Hide Nowcast', toggle:true, toggleStatus:true,onClick:toggleNowCast})
 nowcastButton.addTo(map);
-himawariButton = L.Control.buttonInfo({ position: 'topright',text:'Hide Nimawari', toggle:true, toggleStatus:true,onClick:toggleHimawari})
+himawariButton = L.Control.buttonInfo({ position: 'topright',text:'Hide Himawari', toggle:true, toggleStatus:true,onClick:toggleHimawari})
 himawariButton.addTo(map);
 
 
@@ -272,12 +272,12 @@ async function refreshHimawari(){
     if(!himawariLayer){
         console.log(`new himawariLayer`);
         himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:opacityHimawari,
-            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわりトゥルーカラー再現画像</a>"});
+            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり赤外画像</a>"});
         himawariLayer.addTo(map);
         // layerControl.addOverlay(himawariLayer,`Himawari`);
         himawariLayerArr[0] = himawariLayer;
         himawariLayerArr[1] = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:opacityHimawari,
-            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわりトゥルーカラー再現画像</a>"});
+            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり赤外画像</a>"});
         himawariLayerArr[1].setOpacity(0);
         himawariLayerArr[1].addTo(map)
     }else{
