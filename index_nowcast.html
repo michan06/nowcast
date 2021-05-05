@@ -27,10 +27,16 @@ html, body, #map {
 <div id="map"></div>
 <script>
 var nowCastLayer;
+var nowCastLayerArr = [];
 var himawariLayer;
+var himawariLayerArr = [];
 var nowCastTimeList;
 var himawariTimeList;
+var playTimelist;
 var isPlay = false;
+var opacityNowCast = 0.85;
+var opacityHimawari = 0.7;
+var optHimawari = 'REP/ETC'; // 'B13/TBB'; // 赤外
 var playInfoButton;
 var map = L.map('map').fitWorld();
 map.setView([35.653918,139.857864], 8);
@@ -66,7 +72,7 @@ var overlays = {
     // "Himawari": himawariLayer
 };
 
-var layerControl = L.control.layers(baseLayers, overlays).addTo(map);
+// var layerControl = L.control.layers(baseLayers, overlays).addTo(map);
 
 var refreshButton  = L.Control.extend({
         options: {
@@ -102,9 +108,10 @@ L.Control.layerButton = L.Control.extend({
         'hideText': !!options.hideText,         //forced bool
         'maxWidth': options.maxWidth || 70,     //number
         'doToggle': options.toggle,			//bool
-        'toggleStatus': false					//bool
+        'toggleStatus': options.toggleStatus || false,					//bool
+        'position': options.position || 'bottomleft'					//bool
         };
-
+        console.log(`${JSON.stringify(button)}`);
         this._button = button;
         // this._update();
     },    
@@ -112,9 +119,11 @@ L.Control.layerButton = L.Control.extend({
         // leaflet-buttons-control-toggleon
         this.button = L.DomUtil.create('button','leaflet-control-button');
         this.button.innerText = this._button.text;
+        this.button.position = this._button.position;
 
         L.DomEvent
-            .addListener(this.button, 'click', this._button.onClick,this)
+            .addListener(this.button, 'click', this.onClick,this)
+            // .addListener(this.button, 'click', this._button.onClick,this)
         return this.button;
     },
     onRemove: function(map) {
@@ -126,15 +135,30 @@ L.Control.layerButton = L.Control.extend({
 
         return this._button.text;
     },
+    onClick: function () {
+        console.log(`onclick:${this._button.toggleStatus}`);
+        this._button.onClick();
+        this._button.toggleStatus = !this._button.toggleStatus;
+    },
+    getToggleStatus: function () {
+        console.log('getToggleStatus');
+        return(this._button.toggleStatus);
+    },
 });
 
 L.Control.buttonInfo = function(opts) {
     return new L.Control.layerButton(opts);
 }
-nowcastInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Nowcast', onClick:playNowCast })
+nowcastInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Nowcast', onClick:playBoth })
 nowcastInfo.addTo(map);
-himawariInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Himawari',onClick:playHimawari })
-himawariInfo.addTo(map);
+// himawariInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Himawari',onClick:playHimawari })
+// himawariInfo.addTo(map);
+
+nowcastButton = L.Control.buttonInfo({ position: 'topright',text:'Hide Nowcast', toggle:true, toggleStatus:true,onClick:toggleNowCast})
+nowcastButton.addTo(map);
+himawariButton = L.Control.buttonInfo({ position: 'topright',text:'Hide Nimawari', toggle:true, toggleStatus:true,onClick:toggleHimawari})
+himawariButton.addTo(map);
+
 
 // map.setView([35.653918,139.857864], 8);
 
@@ -143,11 +167,43 @@ refreshHimawari();
 window.setInterval(refreshHimawari, 150000);
 window.setInterval(refreshNowCast, 300000);
 
+function toggleNowCast(){
+    if(nowcastButton.getToggleStatus()){
+        nowcastButton.setText('Show Nowcast');
+        console.log('toggle to off');
+        nowCastLayer.setOpacity(0);
+        nowCastLayerArr[0].setOpacity(0);
+        nowCastLayerArr[1].setOpacity(0);
+    }else{
+        nowcastButton.setText('Hide Nowcast');
+        nowCastLayer.setOpacity(opacityNowCast);
+        console.log('toggle to on');
+    }
+}
+function toggleHimawari(){
+    if(himawariButton.getToggleStatus()){
+        himawariButton.setText('Show Himawari');
+        console.log('toggle to off');
+        himawariLayer.setOpacity(0);
+        himawariLayerArr[0].setOpacity(0);
+        himawariLayerArr[1].setOpacity(0);
+    }else{
+        himawariButton.setText('Hide Himawari');
+        himawariLayer.setOpacity(opacityHimawari);
+        console.log('toggle to on');
+    }
+}
+
 async function refreshNowCast(){
     isPlay = false;
     nowCastTimeList = await fetch("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json").then(function(response) {
         return response.json();
     });
+    playTimelist = JSON.parse(JSON.stringify(nowCastTimeList));
+    playTimelist.sort(function (a, b) {
+        return (a.baseTime < b.baseTime ? 1 : -1);
+    })
+
     // console.log(nowCastTimeList);
     const baseTime = nowCastTimeList[0]['basetime'];
     const validTime = nowCastTimeList[0]['validtime'];
@@ -159,15 +215,43 @@ async function refreshNowCast(){
     if(!nowCastLayer){
         // 
         console.log(`new nowCastLayer`);
-        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:0.85,
+        nowCastLayer = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:opacityNowCast,
             attribution:"<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"});
         nowCastLayer.addTo(map);
-        layerControl.addOverlay(nowCastLayer,`Nowcast`);
+        // layerControl.addOverlay(nowCastLayer,`Nowcast`);
+        nowCastLayerArr[0] = nowCastLayer;
+        nowCastLayerArr[1] = L.tileLayer(url, {zIndex:20,maxNativeZoom:10,opacity:opacityNowCast,
+            attribution:"<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"});
+        nowCastLayerArr[1].setOpacity(0);
+        nowCastLayerArr[1].addTo(map)
     }else{
+        if(nowcastButton.getToggleStatus()){
+            if(nowCastLayer===nowCastLayerArr[1]){
+                nowCastLayer = nowCastLayerArr[0];
+                nowCastLayerArr[0].setOpacity(0);
+                nowCastLayerArr[1].setOpacity(opacityNowCast);
+            }else{
+                nowCastLayer = nowCastLayerArr[1];
+                nowCastLayerArr[1].setOpacity(0);
+                nowCastLayerArr[0].setOpacity(opacityNowCast);
+            }
+        }
         console.log(`setUrl nowCastLayer`);
         nowCastLayer.setUrl(url);
+        while(nowCastLayer.isLoading()){
+            await sleep(10);
+        }
+        if(nowcastButton.getToggleStatus()){
+            if(nowCastLayer===nowCastLayerArr[1]){
+                nowCastLayerArr[1].setOpacity(opacityNowCast);
+                nowCastLayerArr[0].setOpacity(0);
+            }else{
+                nowCastLayerArr[0].setOpacity(opacityNowCast);
+                nowCastLayerArr[1].setOpacity(0);
+            }
+        }
     }
-    nowcastInfo.setText(`☂ ▶:${baseTimeDt}`);
+    nowcastInfo.setText(`▶:${baseTimeDt}`);
 }
 
 // https://www.jma.go.jp/bosai/himawari/data/satimg/20210406040000/jp/20210406040000/B13/TBB/6/54/26.jpg
@@ -182,21 +266,122 @@ async function refreshHimawari(){
     const validTime = himawariTimeList[himawariTimeList.length-1]['validtime'];
     const baseTimeDt = moment(baseTime+" +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD hh:mm:ss");
     console.log(`${new Date()}:${validTime}`);
-    const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/B13/TBB/{z}/{x}/{y}.jpg`;
+    // const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
+    const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/${optHimawari}/{z}/{x}/{y}.jpg`;
     console.log(url);
     if(!himawariLayer){
         console.log(`new himawariLayer`);
-        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:0.70,
-            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり雲頂強調画像</a>"});
+        himawariLayer = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:opacityHimawari,
+            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわりトゥルーカラー再現画像</a>"});
         himawariLayer.addTo(map);
-        layerControl.addOverlay(himawariLayer,`Himawari`);
+        // layerControl.addOverlay(himawariLayer,`Himawari`);
+        himawariLayerArr[0] = himawariLayer;
+        himawariLayerArr[1] = L.tileLayer(url, {zIndex:10,maxNativeZoom:6,maxNativeZoom:6,opacity:opacityHimawari,
+            attribution:"<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわりトゥルーカラー再現画像</a>"});
+        himawariLayerArr[1].setOpacity(0);
+        himawariLayerArr[1].addTo(map)
     }else{
+        if(himawariButton.getToggleStatus()){
+            if(himawariLayer===himawariLayerArr[1]){
+                himawariLayer = himawariLayerArr[0];
+                himawariLayerArr[0].setOpacity(0);
+                nowCastLayerArr[1].setOpacity(opacityNowCast);
+            }else{
+                himawariLayer = himawariLayerArr[1];
+                himawariLayerArr[1].setOpacity(0);
+                himawariLayerArr[0].setOpacity(opacityNowCast);
+            }
+        }
         console.log(`setUrl himawariLayer`);
         himawariLayer.setUrl(url);
+        if(himawariButton.getToggleStatus()){
+            if(himawariLayer===himawariLayerArr[1]){
+                nowCastLayerArr[0].setOpacity(opacityNowCast);
+                himawariLayerArr[1].setOpacity(0);
+            }else{
+                himawariLayerArr[1].setOpacity(opacityNowCast);
+                himawariLayerArr[0].setOpacity(0);
+            }
+        }
     }
-    himawariInfo.setText(`☁ ▶:${baseTimeDt}`);
+    himawariInfo.setText(`▶:${baseTimeDt}`);
 
 }
+
+async function playBoth(){
+    if(isPlay){
+        isPlay = false;
+        return;
+    }
+    isPlay = true;
+    // const timelist = nowCastTimeList.sort(function (a, b) {
+    //     return (a.baseTime < b.baseTime ? 1 : -1);
+    // })
+    // console.log(timelist);
+
+    var i = 0;
+    for(time of playTimelist ){
+        var layer; 
+
+        const baseTime = time['basetime'];
+        const validTime = time['validtime'];
+        const baseTimeDt = moment(baseTime+" +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD hh:mm:ss");
+        console.log(`${new Date()}:${validTime}`);
+        const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
+        const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/${optHimawari}/{z}/{x}/{y}.jpg`;
+        console.log(url);
+
+        if(nowCastLayer === nowCastLayerArr[0]){
+            nowCastLayer = nowCastLayerArr[1];
+            nowCastLayerArr[1].setOpacity(0);
+            nowCastLayerArr[0].setOpacity(opacityNowCast);
+        }else{
+            nowCastLayer = nowCastLayerArr[0];
+            nowCastLayerArr[0].setOpacity(0);
+            nowCastLayerArr[1].setOpacity(opacityNowCast);
+        }
+
+        if(himawariLayer === himawariLayerArr[0]){
+            himawariLayer = himawariLayerArr[1];
+            himawariLayerArr[1].setOpacity(0);
+            himawariLayerArr[0].setOpacity(opacityHimawari);
+        }else{
+            himawariLayer = himawariLayerArr[0];
+            himawariLayerArr[0].setOpacity(0);
+            himawariLayerArr[1].setOpacity(opacityHimawari);
+        }
+
+        himawariLayer.setUrl(url2);
+        nowCastLayer.setUrl(url);
+
+        var rest = 500;
+        while(nowCastLayer.isLoading()||himawariLayer.isLoading()){
+            await sleep(10);
+            rest = rest - 10;
+        }
+        await sleep(rest);
+        if(!isPlay){
+            break;
+        }
+        nowcastInfo.setText(`▶:${baseTimeDt}`);
+    }
+    if(nowCastLayer === nowCastLayerArr[0]){
+        nowCastLayerArr[0].setOpacity(opacityNowCast);
+        nowCastLayerArr[1].setOpacity(0);
+    }else{
+        nowCastLayerArr[1].setOpacity(opacityNowCast);
+        nowCastLayerArr[0].setOpacity(0);
+    }
+    if(himawariLayer === himawariLayerArr[0]){
+        himawariLayerArr[1].setOpacity(opacityHimawari);
+        himawariLayerArr[0].setOpacity(0);
+    }else{
+        himawariLayerArr[1].setOpacity(opacityHimawari);
+        himawariLayerArr[0].setOpacity(0);
+    }
+    isPlay = false;
+}
+
 
 async function playNowCast(){
     if(isPlay){
@@ -204,19 +389,33 @@ async function playNowCast(){
         return;
     }
     isPlay = true;
-    const timelist = nowCastTimeList.sort(function (a, b) {
-        return (a.baseTime < b.baseTime ? 1 : -1);
-    })
-    console.log(timelist);
-    for(time of timelist ){
+    // const timelist = nowCastTimeList.sort(function (a, b) {
+    //     return (a.baseTime < b.baseTime ? 1 : -1);
+    // })
+    // console.log(timelist);
+
+    var i = 0;
+    for(time of playTimelist ){
+        var layer; 
+
         const baseTime = time['basetime'];
         const validTime = time['validtime'];
         const baseTimeDt = moment(baseTime+" +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD hh:mm:ss");
         console.log(`${new Date()}:${validTime}`);
         const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
         console.log(url);
+        if(nowCastLayer === nowCastLayerArr[0]){
+            nowCastLayer = nowCastLayerArr[1];
+            nowCastLayerArr[1].setOpacity(0);
+            nowCastLayerArr[0].setOpacity(opacityNowCast);
+        }else{
+            nowCastLayer = nowCastLayerArr[0];
+            nowCastLayerArr[0].setOpacity(0);
+            nowCastLayerArr[1].setOpacity(opacityNowCast);
+        }
+
         nowCastLayer.setUrl(url);
-        var rest = 1000;
+        var rest = 500;
         while(nowCastLayer.isLoading()){
             await sleep(10);
             rest = rest - 10;
@@ -226,7 +425,13 @@ async function playNowCast(){
             break;
         }
         nowcastInfo.setText(`☂ ▶:${baseTimeDt}`);
-
+    }
+    if(nowCastLayer === nowCastLayerArr[0]){
+        nowCastLayerArr[0].setOpacity(opacityNowCast);
+        nowCastLayerArr[1].setOpacity(0);
+    }else{
+        nowCastLayerArr[1].setOpacity(opacityNowCast);
+        nowCastLayerArr[0].setOpacity(0);
     }
     isPlay = false;
 }
@@ -237,19 +442,29 @@ async function playHimawari(){
         return;
     }
     isPlay = true;
-    // for(time of himawariTimeList){
-    const timelist = nowCastTimeList.sort(function (a, b) {
-        return (a.baseTime < b.baseTime ? 1 : -1);
-    })
+    var i = 0;
 
-    for(time of timelist){
+    for(time of playTimelist){
         const baseTime = time['basetime'];
         const validTime = time['validtime'];
         const baseTimeDt = moment(baseTime+" +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD hh:mm:ss");
         console.log(`${new Date()}:${validTime}`);
-        const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
+        const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/${optHimawari}/{z}/{x}/{y}.jpg`;
+        console.log(`i:${i}`);
+
+        if(himawariLayer === himawariLayerArr[0]){
+            himawariLayer = himawariLayerArr[1];
+            himawariLayerArr[1].setOpacity(0);
+            himawariLayerArr[0].setOpacity(opacityHimawari);
+        }else{
+            himawariLayer = himawariLayerArr[0];
+            himawariLayerArr[0].setOpacity(0);
+            himawariLayerArr[1].setOpacity(opacityHimawari);
+        }
+
         himawariLayer.setUrl(url2);
-        var rest = 1000;
+        // himawariLayer.setUrl(url2);
+        var rest = 500;
         while(himawariLayer.isLoading()){
             await sleep(10);
             rest = rest - 10;
@@ -259,6 +474,13 @@ async function playHimawari(){
             break;
         }
         himawariInfo.setText(`☁ ▶:${baseTimeDt}`);
+    }
+    if(himawariLayer === himawariLayerArr[0]){
+        himawariLayerArr[1].setOpacity(opacityHimawari);
+        himawariLayerArr[0].setOpacity(0);
+    }else{
+        himawariLayerArr[1].setOpacity(opacityHimawari);
+        himawariLayerArr[0].setOpacity(0);
     }
     isPlay = false;
 }
