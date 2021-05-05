@@ -44,7 +44,7 @@ map.setView([35.653918,139.857864], 8);
 map.locate({setView: true, maxZoom: 9});
 function onLocationFound(e) {
     var radius = e.accuracy;
-    L.circleMarker(e.latlng,{radius:10,color:'#FF'}).addTo(map);
+    L.circleMarker(e.latlng,{radius:10,color:'#800000'}).addTo(map);
         // .bindPopup("You are within " + radius + " meters from this point").openPopup();
 
     // L.circle(e.latlng, radius).addTo(map);
