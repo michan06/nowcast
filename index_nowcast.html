@@ -21,6 +21,10 @@ html, body, #map {
     height: 100%;
     width: 100vw;
 }
+.fontLarge{
+    font-size: x-large;
+    padding: 0.15em;
+}
 </style>    
 </head>
 <body>
@@ -79,7 +83,7 @@ var refreshButton  = L.Control.extend({
             position: 'topleft'
         },
         onAdd: function(m) {
-            var btn = L.DomUtil.create('button')
+            var btn = L.DomUtil.create('button','leaflet-control-button fontLarge')
             btn.innerText = '🔄'
             L.DomEvent.on(btn, 'click', function() {
                 isPlay = false;
@@ -107,6 +111,7 @@ L.Control.layerButton = L.Control.extend({
         'onClick': options.onClick,           //callback function
         'hideText': !!options.hideText,         //forced bool
         'maxWidth': options.maxWidth || 70,     //number
+        'minWidth': options.minWidth || 70,     //number
         'doToggle': options.toggle,			//bool
         'toggleStatus': options.toggleStatus || false,					//bool
         'position': options.position || 'bottomleft'					//bool
@@ -117,9 +122,10 @@ L.Control.layerButton = L.Control.extend({
     },    
     onAdd: function(map) {
         // leaflet-buttons-control-toggleon
-        this.button = L.DomUtil.create('button','leaflet-control-button');
+        this.button = L.DomUtil.create('button','leaflet-control-button fontLarge');
         this.button.innerText = this._button.text;
         this.button.position = this._button.position;
+        // this.button.addClass('fontLarge');
 
         L.DomEvent
             .addListener(this.button, 'click', this.onClick,this)
@@ -331,26 +337,29 @@ async function playBoth(){
         const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/${optHimawari}/{z}/{x}/{y}.jpg`;
         console.log(url);
 
-        if(nowCastLayer === nowCastLayerArr[0]){
-            nowCastLayer = nowCastLayerArr[1];
-            nowCastLayerArr[1].setOpacity(0);
-            nowCastLayerArr[0].setOpacity(opacityNowCast);
-        }else{
-            nowCastLayer = nowCastLayerArr[0];
-            nowCastLayerArr[0].setOpacity(0);
-            nowCastLayerArr[1].setOpacity(opacityNowCast);
-        }
+        if(nowcastButton.getToggleStatus()){
 
-        if(himawariLayer === himawariLayerArr[0]){
-            himawariLayer = himawariLayerArr[1];
-            himawariLayerArr[1].setOpacity(0);
-            himawariLayerArr[0].setOpacity(opacityHimawari);
-        }else{
-            himawariLayer = himawariLayerArr[0];
-            himawariLayerArr[0].setOpacity(0);
-            himawariLayerArr[1].setOpacity(opacityHimawari);
+            if(nowCastLayer === nowCastLayerArr[0]){
+                nowCastLayer = nowCastLayerArr[1];
+                nowCastLayerArr[1].setOpacity(0);
+                nowCastLayerArr[0].setOpacity(opacityNowCast);
+            }else{
+                nowCastLayer = nowCastLayerArr[0];
+                nowCastLayerArr[0].setOpacity(0);
+                nowCastLayerArr[1].setOpacity(opacityNowCast);
+            }
         }
-
+        if(himawariButton.getToggleStatus()){
+            if(himawariLayer === himawariLayerArr[0]){
+                himawariLayer = himawariLayerArr[1];
+                himawariLayerArr[1].setOpacity(0);
+                himawariLayerArr[0].setOpacity(opacityHimawari);
+            }else{
+                himawariLayer = himawariLayerArr[0];
+                himawariLayerArr[0].setOpacity(0);
+                himawariLayerArr[1].setOpacity(opacityHimawari);
+            }
+        }
         himawariLayer.setUrl(url2);
         nowCastLayer.setUrl(url);
 
@@ -365,19 +374,23 @@ async function playBoth(){
         }
         nowcastInfo.setText(`▶:${baseTimeDt}`);
     }
-    if(nowCastLayer === nowCastLayerArr[0]){
-        nowCastLayerArr[0].setOpacity(opacityNowCast);
-        nowCastLayerArr[1].setOpacity(0);
-    }else{
-        nowCastLayerArr[1].setOpacity(opacityNowCast);
-        nowCastLayerArr[0].setOpacity(0);
+    if(nowcastButton.getToggleStatus()){
+        if(nowCastLayer === nowCastLayerArr[0]){
+            nowCastLayerArr[0].setOpacity(opacityNowCast);
+            nowCastLayerArr[1].setOpacity(0);
+        }else{
+            nowCastLayerArr[1].setOpacity(opacityNowCast);
+            nowCastLayerArr[0].setOpacity(0);
+        }
     }
-    if(himawariLayer === himawariLayerArr[0]){
-        himawariLayerArr[1].setOpacity(opacityHimawari);
-        himawariLayerArr[0].setOpacity(0);
-    }else{
-        himawariLayerArr[1].setOpacity(opacityHimawari);
-        himawariLayerArr[0].setOpacity(0);
+    if(himawariButton.getToggleStatus()){
+        if(himawariLayer === himawariLayerArr[0]){
+            himawariLayerArr[1].setOpacity(opacityHimawari);
+            himawariLayerArr[0].setOpacity(0);
+        }else{
+            himawariLayerArr[1].setOpacity(opacityHimawari);
+            himawariLayerArr[0].setOpacity(0);
+        }
     }
     isPlay = false;
 }
