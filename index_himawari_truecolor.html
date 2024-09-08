@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ひまわり衛星画像表示</title>
+</head>
+
+<body>
+    <h3>ひまわり衛星の全天トゥルーカラー再現画像</h3>
+    <button onclick="startSlideshow()">過去6時間の連続再生</button>
+    <button onclick="stopSlideshow()">連続再生停止</button>
+    <button onclick="startAutoUpdate()">最新画像を自動更新</button>
+    <button onclick="stopAutoUpdate()">自動更新停止</button>
+    <div id="datetime"></div>
+    <img id="himawari-image" src="" alt="ひまわり衛星画像">
+    <br>
+
+
+    <script>
+        let slideshowInterval;
+        let autoUpdateInterval;
+        let nowPlaying = false;
+        autoUpdateInterval = setInterval(showLatestImage, 5 * 60 * 1000); // 5分ごとに更新
+
+        // 日本時間をUTCに変換する関数
+        function toUTC(date) {
+            console.log(`toUTC ${date}→${new Date(date.getTime() - 9 * 60 * 60 * 1000)}`);
+            return new Date(date.getTime() - 9 * 60 * 60 * 1000); // UTCに変換
+        }
+
+        // UTCから画像URLを作成する関数
+        function getImageUrl(date) {
+            const yyyy = date.getUTCFullYear();
+            const MM = ('0' + (date.getUTCMonth() + 1)).slice(-2);
+            const dd = ('0' + date.getUTCDate()).slice(-2);
+            const HH = ('0' + date.getUTCHours()).slice(-2);
+            const mm = ('0' + Math.floor(date.getUTCMinutes() / 10) * 10).slice(-2); // 10分単位
+            console.log(`https://www.jma.go.jp/bosai/himawari/data/Fd_disk/sat_rep_${yyyy}${MM}${dd}${HH}${mm}.png`);
+            return `https://www.jma.go.jp/bosai/himawari/data/Fd_disk/sat_rep_${yyyy}${MM}${dd}${HH}${mm}.png`;
+        }
+
+        // 現在の画像を表示（日本時間から最新の有効なUTC時間を計算）
+        function showLatestImage() {
+            if (nowPlaying) return; // スライドショー中は更新しない
+            const nowJST = new Date();
+            // const utcTime = toUTC(nowJST);
+            const utcTime = nowJST;
+            utcTime.setMinutes(Math.floor(utcTime.getMinutes() / 10) * 10); // 10分単位に丸める
+            console.log(utcTime);
+
+            document.getElementById("datetime").innerHTML = utcTime;
+            document.getElementById("himawari-image").src = getImageUrl(utcTime);
+        }
+
+        // スライドショーを開始（過去6時間の画像を10分ごとに表示）
+        function startSlideshow() {
+            nowPlaying = true;
+            const nowJST = new Date();
+            let current = new Date(nowJST.getTime() - 6 * 60 * 60 * 1000); // 6時間前から
+
+            slideshowInterval = setInterval(() => {
+                // const utcTime = toUTC(current);
+                const utcTime = current;
+                utcTime.setMinutes(Math.floor(utcTime.getMinutes() / 10) * 10); // 10分単位
+                console.log(utcTime);
+                document.getElementById("datetime").innerHTML = utcTime;
+                document.getElementById("himawari-image").src = getImageUrl(utcTime);
+                current = new Date(current.getTime() + 10 * 60 * 1000); // 10分後に進む
+
+                if (current > nowJST) {
+                    nowPlaying = false;
+                    clearInterval(slideshowInterval);
+                    // current = new Date(nowJST.getTime() - 6 * 60 * 60 * 1000); // 6時間前に戻る
+                }
+            }, 500); // 0.5秒ごとに更新
+        }
+
+        // スライドショーを停止
+        function stopSlideshow() {
+            nowPlaying = false;
+            clearInterval(slideshowInterval);
+        }
+
+        // 自動更新を開始（10分ごとに最新画像を取得）
+        function startAutoUpdate() {
+            showLatestImage(); // まず最新画像を表示
+        }
+
+        // 自動更新を停止
+        function stopAutoUpdate() {
+            clearInterval(autoUpdateInterval);
+        }
+
+        // ページがロードされたときに最新の画像を表示
+        window.onload = showLatestImage;
+    </script>
+</body>
+
+</html>
