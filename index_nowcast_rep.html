@@ -56,7 +56,30 @@ function onLocationFound(e) {
     // L.circle(e.latlng, radius).addTo(map);
 }
 map.on('locationfound', onLocationFound);
+// 現在のズーム方向を保持する変数
+let startZoomLevel = 0;
+let zoomingIn = true;
 
+// ズーム方向を検知
+map.on('zoomstart', () => {
+    startZoomLevel = map.getZoom();
+});
+
+// ズームレベル変更時のイベントリスナーを設定
+map.on('zoomend', () => {
+    const endZoomLevel = map.getZoom(); // 現在のズームレベルを取得
+    if (startZoomLevel < endZoomLevel) {
+        zoomingIn = true;
+    }else{
+        zoomingIn = false;
+	}
+
+    if (endZoomLevel % 2 !== 0) { // 奇数かどうかを判定
+        const newZoomLevel = zoomingIn ? endZoomLevel + 1 : endZoomLevel - 1; // ズーム方向に応じて調整
+        console.log(`Adjusting zoom level from ${startZoomLevel} to ${endZoomLevel} => ${zoomingIn} = ${newZoomLevel}`);
+        map.setZoom(newZoomLevel); // ズームレベルを変更
+    }
+});
 //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
 var seamLessPhotoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
 //L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
