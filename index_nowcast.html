@@ -45,6 +45,12 @@ var optHimawari = 'B13/TBB'; // 'B13/TBB'; // 赤外 //'REP/ETC' // トゥルー
 var playInfoButton;
 var map = L.map('map').fitWorld();
 map.setView([35.653918,139.857864], 8);
+//1
+L.circleMarker([34.819916,135.504041],{radius:7,color:'#800000'}).addTo(map);
+//2
+L.circleMarker([37.014244,138.652698],{radius:7,color:'#800000'}).addTo(map);
+//3
+L.circleMarker([36.881936,138.638919],{radius:7,color:'#800000'}).addTo(map);
 
 map.locate({setView: true, maxZoom: 8});
 function onLocationFound(e) {
