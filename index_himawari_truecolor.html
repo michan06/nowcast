@@ -11,8 +11,8 @@
     <h3>ひまわり衛星の全天トゥルーカラー再現画像</h3>
     <button onclick="startSlideshow()">過去6時間の連続再生</button>
     <button onclick="stopSlideshow()">連続再生停止</button>
-    <button onclick="startAutoUpdate()">最新画像を自動更新</button>
-    <button onclick="stopAutoUpdate()">自動更新停止</button>
+    <!-- <button onclick="startAutoUpdate()">最新画像を自動更新</button>
+    <button onclick="stopAutoUpdate()">自動更新停止</button> -->
     <div id="datetime"></div>
     <img id="himawari-image" src="" alt="ひまわり衛星画像">
     <br>
@@ -37,44 +37,63 @@
             const dd = ('0' + date.getUTCDate()).slice(-2);
             const HH = ('0' + date.getUTCHours()).slice(-2);
             const mm = ('0' + Math.floor(date.getUTCMinutes() / 10) * 10).slice(-2); // 10分単位
-            console.log(`https://www.jma.go.jp/bosai/himawari/data/Fd_disk/sat_rep_${yyyy}${MM}${dd}${HH}${mm}.png`);
             return `https://www.jma.go.jp/bosai/himawari/data/Fd_disk/sat_rep_${yyyy}${MM}${dd}${HH}${mm}.png`;
         }
 
-        // 現在の画像を表示（日本時間から最新の有効なUTC時間を計算）
-        function showLatestImage() {
-            if (nowPlaying) return; // スライドショー中は更新しない
-            const nowJST = new Date();
-            // const utcTime = toUTC(nowJST);
-            const utcTime = nowJST;
-            utcTime.setMinutes(Math.floor(utcTime.getMinutes() / 10) * 10); // 10分単位に丸める
-            console.log(utcTime);
+        // 画像の存在確認を行う関数
+        function checkImageExists(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                img.src = url;
+            });
+        }
 
-            document.getElementById("datetime").innerHTML = utcTime;
-            document.getElementById("himawari-image").src = getImageUrl(utcTime);
+        // 現在の画像を表示
+        async function showLatestImage() {
+            if (nowPlaying) return;
+            const nowJST = new Date();
+            const utcTime = new Date(nowJST.getTime());
+            utcTime.setMinutes(Math.floor(utcTime.getMinutes() / 10) * 10);
+
+            const imageUrl = getImageUrl(utcTime);
+            if (await checkImageExists(imageUrl)) {
+                document.getElementById("datetime").innerHTML = utcTime.toLocaleString('ja-JP');
+                document.getElementById("himawari-image").src = imageUrl;
+            }
         }
 
         // スライドショーを開始（過去6時間の画像を10分ごとに表示）
         function startSlideshow() {
+            if (nowPlaying) return;
+
             nowPlaying = true;
             const nowJST = new Date();
-            let current = new Date(nowJST.getTime() - 6 * 60 * 60 * 1000); // 6時間前から
+            let current = new Date(nowJST.getTime() - 6 * 60 * 60 * 1000);
 
-            slideshowInterval = setInterval(() => {
-                // const utcTime = toUTC(current);
-                const utcTime = current;
-                utcTime.setMinutes(Math.floor(utcTime.getMinutes() / 10) * 10); // 10分単位
-                console.log(utcTime);
-                document.getElementById("datetime").innerHTML = utcTime;
-                document.getElementById("himawari-image").src = getImageUrl(utcTime);
-                current = new Date(current.getTime() + 10 * 60 * 1000); // 10分後に進む
+            async function showNextImage() {
+                if (!nowPlaying) return;
+
+                current.setMinutes(Math.floor(current.getMinutes() / 10) * 10);
+                const imageUrl = getImageUrl(current);
+
+                if (await checkImageExists(imageUrl)) {
+                    document.getElementById("datetime").innerHTML = current.toLocaleString('ja-JP');
+                    document.getElementById("himawari-image").src = imageUrl;
+                }
+
+                current = new Date(current.getTime() + 10 * 60 * 1000);
 
                 if (current > nowJST) {
-                    nowPlaying = false;
-                    clearInterval(slideshowInterval);
-                    // current = new Date(nowJST.getTime() - 6 * 60 * 60 * 1000); // 6時間前に戻る
+                    stopSlideshow();
+                    showLatestImage();
+                } else {
+                    slideshowInterval = setTimeout(showNextImage, 500);
                 }
-            }, 500); // 0.5秒ごとに更新
+            }
+
+            showNextImage();
         }
 
         // スライドショーを停止
