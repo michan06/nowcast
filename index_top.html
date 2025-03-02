@@ -1,83 +1,93 @@
+
 <!doctype html>
 <html lang="en">
-  <head>
+
+<head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 
     <title>Top</title>
-<style>
-body{
-    height: 100vh;
-    width: 100vw;
-    margin: 0px;
-    padding: 0px;
-}
-#iw{
-    margin: 0px;
-    padding: 0px;
-    height: 90vh;
-    width: 100%;
-}
-</style>
-  </head>
-  <body>
+    <style>
+        body {
+            height: 100vh;
+            width: 100vw;
+            margin: 0px;
+            padding: 0px;
+        }
+
+        #iw {
+            margin: 0px;
+            padding: 0px;
+            height: 90vh;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
     <div class="container-fluid  m-0 p-0" style="height:10vh;">
         <div class="row">
-          <div class="col" id="parent">
-            <!-- <a type="button" class="btn btn-secondary" href="http://192.168.10.22/index_twelite2.html" target="iw">Secondary</a>
+            <div class="col" id="parent">
+                <!-- <a type="button" class="btn btn-secondary" href="http://192.168.10.22/index_twelite2.html" target="iw">Secondary</a>
             <a type="button" class="btn btn-success" href="http://192.168.10.22/index_mqtt_graph.html" target="iw">Success</a> -->
-          </div>
+            </div>
         </div>
         <div class="m-0 p-0">
-            <iframe id="iw" name="iw" class="m-0 p-0"
-                title=""
-                src="">
+            <iframe id="iw" name="iw" class="m-0 p-0" title="" src="">
             </iframe>
         </div>
     </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
-<script>
-const urls=[
-    {label:"気象庁予報", url: "http://192.168.10.22/index_jma_yoho.html"},
-    {label:"TWELITE2", url: "http://192.168.10.22/index_twelite2.html"},
-    {label:"NETATMO", url: "http://192.168.10.22/index_netatmo.html"},
-    {label:"電力", url: "http://192.168.10.22/index.html"},
-    {label:"温湿度(グラフ)", url: "http://192.168.10.22/index_mqtt_graph.html"},
-    {label:"温湿度(直近値)", url: "http://192.168.10.22/index_mqtt.html"},
-    {label:"東京大気", url: "http://192.168.10.22/index_taiki.html"},
-    {label:"気象庁", url: "https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=130000"},
-    {label:"気象協会", url: "https://tenki.jp/forecast/3/15/4510/12227/1hour.html"},
-    {label:"WeatherNews", url: "https://weathernews.jp/onebox/35.6777222222222/139.770527777778/q=%E6%9D%B1%E4%BA%AC&v=f02d60103eebddd4b43e66485464fc491ef1c14596ce3f73dcdd050eaf83551e&lang=ja"},
-    {label:"ナウキャスト", url: "https://michan06.github.io/nowcast/index_nowcast.html"},
-];
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"
+        integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"
+        integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF"
+        crossorigin="anonymous"></script>
+    <script>
+        const urls = [
+            { label: "気象庁予報", url: "http://192.168.10.22/index_jma_yoho.html", target: "iw" },
+            { label: "TWELITE2", url: "http://192.168.10.22/index_twelite2.html", target: "iw" },
+            { label: "NETATMO", url: "http://192.168.10.22/index_netatmo.html", target: "iw" },
+            { label: "電力", url: "http://192.168.10.22/index.html", target: "iw" },
+            { label: "温湿度(グラフ)", url: "http://192.168.10.22/index_mqtt_graph.html", target: "iw" },
+            { label: "温湿度(直近値)", url: "http://192.168.10.22/index_mqtt.html", target: "iw" },
+            { label: "東京大気", url: "http://192.168.10.22/index_taiki.html", target: "iw" },
+            { label: "気象庁", url: "https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=130000", target: "_blank" },
+            { label: "気象協会", url: "https://tenki.jp/forecast/3/15/4510/12227/1hour.html", target: "_blank" },
+            { label: "WeatherNews", url: "https://weathernews.jp/onebox/35.6777222222222/139.770527777778/q=%E6%9D%B1%E4%BA%AC&v=f02d60103eebddd4b43e66485464fc491ef1c14596ce3f73dcdd050eaf83551e&lang=ja", target: "iw" },
+            { label: "ナウキャスト", url: "https://michan06.github.io/nowcast/index_nowcast.html", target: "iw" },
+        ];
 
-const parent = document.getElementById('parent');
+        const parent = document.getElementById('parent');
 
-urls.forEach(url=>{
-    const button = document.createElement("a");
-    button.setAttribute("type","button");
-    button.setAttribute("target","iw");
-    button.setAttribute("href",url.url);
-    button.classList.add("btn","btn-outline-primary","btn-lg");
-    button.innerHTML=url.label;
-    parent.append(button);
-});
+        urls.forEach(url => {
+            const button = document.createElement("a");
+            button.setAttribute("type", "button");
+            button.setAttribute("target", url.target);
+            button.setAttribute("href", url.url);
+            button.classList.add("btn", "btn-outline-primary", "btn-lg");
+            button.innerHTML = url.label;
+            parent.append(button);
+        });
 
-// <a type="button" class="btn btn-primary" href="https://www.jma.go.jp/bosai/wdist/timeseries.html#area_type=offices&area_code=130000" target="iw">Primary</a>
+        // <a type="button" class="btn btn-primary" href="https://www.jma.go.jp/bosai/wdist/timeseries.html#area_type=offices&area_code=130000" target="iw">Primary</a>
 
-const iw = document.getElementById('iw');
+        const iw = document.getElementById('iw');
 
-function click(o){
-    console.log(o.id);
-}
-</script>
+        function click(o) {
+            console.log(o.id);
+        }
+    </script>
 </body>
+
 </html>
