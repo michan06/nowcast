@@ -66,10 +66,12 @@
         var himawariTimeList;
         var playTimelist;
         var isPlay = false;
+        var playSpeed = 2; // 再生速度 (1: 通常, 2: 2倍速, 4: 4倍速) - フレームスキップで実現
         var opacityNowCast = 0.65;//0.85;
         var opacityHimawari = 0.7;//0.7;
-        //var optHimawari = 'B13/TBB'; // 'B13/TBB'; // 赤外 //'REP/ETC' // トゥルーカラー
-        var optHimawari = 'REP/ETC'; // 'B13/TBB'; // 赤外 //'REP/ETC' // トゥルーカラー
+        var optHimawari = 'B13/TBB'; // 'B13/TBB'; // 赤外 //'REP/ETC' // トゥルーカラー
+        var isManualHimawariMode = false; // 手動でモード切替した場合true（自動切替を無効化）
+        var lastIsDaytime = null; // 前回の昼夜状態（昼夜切替検知用）
         var playInfoButton;
         var map = L.map('map').fitWorld();
         map.setView([35.653918, 139.857864], 8);
@@ -157,27 +159,17 @@
             }
         });
         //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
-        var seamLessPhotoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
-            //L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
-            attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
-        })
-        seamLessPhotoLayer.addTo(map);
-        var stdLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+        // 白地図（ひまわり表示時用）
+        var blankLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
             attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
         });
+        // 衛星写真（ひまわり非表示時用）
+        var seamlessPhotoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+            attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+        });
+        blankLayer.addTo(map);
         const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
 
-        var baseLayers = {
-            //    "Standard": stdLayer,
-            //    "Seamless Photo": seamLessPhotoLayer
-        };
-
-        var overlays = {
-            // "Nowcast": nowCastLayer,
-            // "Himawari": himawariLayer
-        };
-
-        // var layerControl = L.control.layers(baseLayers, overlays).addTo(map);
 
         var refreshButton = L.Control.extend({
             options: {
@@ -188,6 +180,9 @@
                 btn.innerText = '🔄'
                 L.DomEvent.on(btn, 'click', function () {
                     isPlay = false;
+                    // 自動切替を再有効化
+                    isManualHimawariMode = false;
+                    console.log('Auto mode re-enabled by refresh button');
                     refreshHimawari();
                     refreshNowCast();
                 })
@@ -256,19 +251,58 @@
         L.Control.buttonInfo = function (opts) {
             return new L.Control.layerButton(opts);
         }
-        nowcastInfo = L.Control.buttonInfo({ position: 'bottomleft', text: 'Nowcast', onClick: playBoth })
-        nowcastInfo.addTo(map);
-        // himawariInfo = L.Control.buttonInfo({ position: 'bottomleft',text:'Himawari',onClick:playHimawari })
-        // himawariInfo.addTo(map);
+
+        // 再生ボタンと速度ボタンを横並びにするコントロール
+        var playControlGroup = L.Control.extend({
+            options: {
+                position: 'bottomleft'
+            },
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar');
+                container.style.display = 'flex';
+                container.style.flexDirection = 'row';
+
+                // 再生ボタン
+                this.playButton = L.DomUtil.create('button', 'leaflet-control-button fontLarge', container);
+                this.playButton.innerText = 'Nowcast';
+                this.playButton.style.minWidth = '200px';
+                L.DomEvent.on(this.playButton, 'click', playBoth);
+
+                // 速度ボタン
+                this.speedButton = L.DomUtil.create('button', 'leaflet-control-button fontLarge', container);
+                this.speedButton.innerText = '2x';
+                this.speedButton.style.minWidth = '50px';
+                L.DomEvent.on(this.speedButton, 'click', toggleSpeed);
+
+                return container;
+            },
+            setPlayText: function (text) {
+                this.playButton.innerText = text;
+            },
+            setSpeedText: function (text) {
+                this.speedButton.innerText = text;
+            }
+        });
+
+        var playControl = new playControlGroup();
+        playControl.addTo(map);
+
+        // nowcastInfoとspeedButtonの互換性のためのラッパー
+        nowcastInfo = {
+            setText: function (text) { playControl.setPlayText(text); },
+            _button: { text: '' }
+        };
+        speedButton = {
+            setText: function (text) { playControl.setSpeedText(text); }
+        };
 
         nowcastButton = L.Control.buttonInfo({ position: 'topright', text: 'Hide Nowcast', toggle: true, toggleStatus: true, onClick: toggleNowCast })
         nowcastButton.addTo(map);
         himawariButton = L.Control.buttonInfo({ position: 'topright', text: 'Hide Himawari', toggle: true, toggleStatus: true, onClick: toggleHimawari })
         himawariButton.addTo(map);
 
-        trueColorButton = L.Control.buttonInfo({ position: 'bottomLeft', text: 'TrueColor', toggle: true, toggleStatus: true, onClick: toggleTrueColor })
+        trueColorButton = L.Control.buttonInfo({ position: 'bottomleft', text: 'TrueColor', toggle: true, toggleStatus: true, onClick: toggleTrueColor })
         trueColorButton.addTo(map);
-
 
         // map.setView([35.653918,139.857864], 8);
 
@@ -297,32 +331,47 @@
                 himawariLayer.setOpacity(0);
                 himawariLayerArr[0].setOpacity(0);
                 himawariLayerArr[1].setOpacity(0);
+                // 衛星写真に切り替え
+                map.removeLayer(blankLayer);
+                seamlessPhotoLayer.addTo(map);
             } else {
                 himawariButton.setText('Hide Himawari');
                 himawariLayer.setOpacity(opacityHimawari);
                 console.log('toggle to on');
+                // 白地図に切り替え
+                map.removeLayer(seamlessPhotoLayer);
+                blankLayer.addTo(map);
             }
         }
 
         function toggleTrueColor() {
-            const now = new Date();
-            const hour = now.getHours();
-            const isDaytime = hour >= 5 && hour < 18;
+            // 手動切替フラグをセット（自動切替を無効化）
+            isManualHimawariMode = true;
 
             if (optHimawari === 'B13/TBB') {
                 trueColorButton.setText('TrueColor');
                 optHimawari = 'REP/ETC';
-                if (!isDaytime) {
-                    console.log('Warning: Manually switching to TrueColor during nighttime');
-                }
             } else {
                 trueColorButton.setText('IR');
                 optHimawari = 'B13/TBB';
-                if (isDaytime) {
-                    console.log('Warning: Manually switching to IR during daytime');
-                }
             }
+            console.log(`Manual switch to ${optHimawari}`);
             refreshHimawari();
+        }
+
+        // 再生速度切り替え関数
+        function toggleSpeed() {
+            if (playSpeed === 1) {
+                playSpeed = 2;
+                speedButton.setText('2x');
+            } else if (playSpeed === 2) {
+                playSpeed = 4;
+                speedButton.setText('4x');
+            } else {
+                playSpeed = 1;
+                speedButton.setText('1x');
+            }
+            console.log(`Play speed changed to ${playSpeed}x`);
         }
 
         // 自動切り替え用の関数を追加
@@ -330,6 +379,18 @@
             const now = new Date();
             const hour = now.getHours();
             const isDaytime = hour >= 5 && hour < 18;
+
+            // 昼夜が切り替わったら自動切替を再有効化
+            if (lastIsDaytime !== null && lastIsDaytime !== isDaytime) {
+                isManualHimawariMode = false;
+                console.log('Auto mode re-enabled by day/night transition');
+            }
+            lastIsDaytime = isDaytime;
+
+            // 手動で切り替えた場合は自動切替しない
+            if (isManualHimawariMode) {
+                return;
+            }
 
             if (isDaytime && optHimawari === 'B13/TBB') {
                 // 昼間なのにIRモードの場合、TrueColorに切り替え
@@ -359,7 +420,7 @@
             // console.log(nowCastTimeList);
             const baseTime = nowCastTimeList[0]['basetime'];
             const validTime = nowCastTimeList[0]['validtime'];
-            const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD HH:mm:ss");
+            const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
 
             console.log(`${new Date()}:${validTime}:${baseTimeDt}`);
             const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
@@ -421,7 +482,7 @@
             // console.log(himawariTimeList);
             const baseTime = himawariTimeList[himawariTimeList.length - 1]['basetime'];
             const validTime = himawariTimeList[himawariTimeList.length - 1]['validtime'];
-            const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD HH:mm:ss");
+            const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
             console.log(`${new Date()}:${validTime}`);
             // const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/SND/ETC/{z}/{x}/{y}.jpg`;
             const url = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/${optHimawari}/{z}/{x}/{y}.jpg`;
@@ -429,14 +490,14 @@
             if (!himawariLayer) {
                 console.log(`new himawariLayer`);
                 himawariLayer = L.tileLayer(url, {
-                    zIndex: 10, maxNativeZoom: 6, maxNativeZoom: 6, opacity: opacityHimawari,
+                    zIndex: 10, maxNativeZoom: 6, opacity: opacityHimawari,
                     attribution: "<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり赤外画像</a>"
                 });
                 himawariLayer.addTo(map);
                 // layerControl.addOverlay(himawariLayer,`Himawari`);
                 himawariLayerArr[0] = himawariLayer;
                 himawariLayerArr[1] = L.tileLayer(url, {
-                    zIndex: 10, maxNativeZoom: 6, maxNativeZoom: 6, opacity: opacityHimawari,
+                    zIndex: 10, maxNativeZoom: 6, opacity: opacityHimawari,
                     attribution: "<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり赤外画像</a>"
                 });
                 himawariLayerArr[1].setOpacity(0);
@@ -446,22 +507,22 @@
                     if (himawariLayer === himawariLayerArr[1]) {
                         himawariLayer = himawariLayerArr[0];
                         himawariLayerArr[0].setOpacity(0);
-                        nowCastLayerArr[1].setOpacity(opacityNowCast);
+                        himawariLayerArr[1].setOpacity(opacityHimawari);
                     } else {
                         himawariLayer = himawariLayerArr[1];
                         himawariLayerArr[1].setOpacity(0);
-                        himawariLayerArr[0].setOpacity(opacityNowCast);
+                        himawariLayerArr[0].setOpacity(opacityHimawari);
                     }
                 }
                 console.log(`setUrl himawariLayer`);
                 himawariLayer.setUrl(url);
                 if (himawariButton.getToggleStatus()) {
                     if (himawariLayer === himawariLayerArr[1]) {
-                        nowCastLayerArr[0].setOpacity(opacityNowCast);
-                        himawariLayerArr[1].setOpacity(0);
-                    } else {
-                        himawariLayerArr[1].setOpacity(opacityNowCast);
                         himawariLayerArr[0].setOpacity(0);
+                        himawariLayerArr[1].setOpacity(opacityHimawari);
+                    } else {
+                        himawariLayerArr[0].setOpacity(opacityHimawari);
+                        himawariLayerArr[1].setOpacity(0);
                     }
                 }
             }
@@ -476,12 +537,16 @@
             }
             isPlay = true;
 
-            var i = 0;
-            for (time of playTimelist) {
+            // 再生開始時に■を表示
+            nowcastInfo.setText('■ 停止');
+
+            // playSpeed分スキップしながらループ（2xなら1つ飛ばし、4xなら3つ飛ばし）
+            for (let i = 0; i < playTimelist.length; i += playSpeed) {
+                const time = playTimelist[i];
                 try {
                     const baseTime = time['basetime'];
                     const validTime = time['validtime'];
-                    const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD HH:mm:ss");
+                    const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
 
                     // データの存在確認を事前に行う
                     const nowcastUrl = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/8/227/99.png`;
@@ -551,7 +616,7 @@
                     await sleep(500);
                     if (!isPlay) break;
 
-                    nowcastInfo.setText(`▶:${baseTimeDt}`);
+                    nowcastInfo.setText(`■${playSpeed}x:${baseTimeDt}`);
 
                 } catch (error) {
                     console.warn('Error in animation frame:', error);
@@ -579,6 +644,15 @@
                 }
             }
             isPlay = false;
+
+            // 再生終了後に▶と最新時刻を表示
+            if (nowCastTimeList && nowCastTimeList.length > 0) {
+                const baseTime = nowCastTimeList[0]['basetime'];
+                const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
+                nowcastInfo.setText(`▶:${baseTimeDt}`);
+            } else {
+                nowcastInfo.setText('▶ 再生');
+            }
         }
 
         // レイヤーの読み込み完了を待つヘルパー関数
@@ -596,108 +670,6 @@
                 };
                 checkLoading();
             });
-        }
-
-        async function playNowCast() {
-            if (isPlay) {
-                isPlay = false;
-                return;
-            }
-            isPlay = true;
-            // const timelist = nowCastTimeList.sort(function (a, b) {
-            //     return (a.baseTime < b.baseTime ? 1 : -1);
-            // })
-            // console.log(timelist);
-
-            var i = 0;
-            for (time of playTimelist) {
-                var layer;
-
-                const baseTime = time['basetime'];
-                const validTime = time['validtime'];
-                const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD HH:mm:ss");
-                console.log(`${new Date()}:${validTime}`);
-                const url = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${baseTime}/none/${validTime}/surf/hrpns/{z}/{x}/{y}.png`;
-                console.log(url);
-                if (nowCastLayer === nowCastLayerArr[0]) {
-                    nowCastLayer = nowCastLayerArr[1];
-                    nowCastLayerArr[1].setOpacity(0);
-                    nowCastLayerArr[0].setOpacity(opacityNowCast);
-                } else {
-                    nowCastLayer = nowCastLayerArr[0];
-                    nowCastLayerArr[0].setOpacity(0);
-                    nowCastLayerArr[1].setOpacity(opacityNowCast);
-                }
-
-                nowCastLayer.setUrl(url);
-                var rest = 500;
-                while (nowCastLayer.isLoading()) {
-                    await sleep(10);
-                    rest = rest - 10;
-                }
-                await sleep(rest);
-                if (!isPlay) {
-                    break;
-                }
-                nowcastInfo.setText(`☂ ▶:${baseTimeDt}`);
-            }
-            if (nowCastLayer === nowCastLayerArr[0]) {
-                nowCastLayerArr[0].setOpacity(opacityNowCast);
-                nowCastLayerArr[1].setOpacity(0);
-            } else {
-                nowCastLayerArr[1].setOpacity(opacityNowCast);
-                nowCastLayerArr[0].setOpacity(0);
-            }
-            isPlay = false;
-        }
-
-        async function playHimawari() {
-            if (isPlay) {
-                isPlay = false;
-                return;
-            }
-            isPlay = true;
-            var i = 0;
-
-            for (time of playTimelist) {
-                const baseTime = time['basetime'];
-                const validTime = time['validtime'];
-                const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDhhmmss Z").format("YYYY/MM/DD HH:mm:ss");
-                console.log(`${new Date()}:${validTime}`);
-                const url2 = `https://www.jma.go.jp/bosai/himawari/data/satimg/${baseTime}/jp/${validTime}/${optHimawari}/{z}/{x}/{y}.jpg`;
-                console.log(`i:${i}`);
-
-                if (himawariLayer === himawariLayerArr[0]) {
-                    himawariLayer = himawariLayerArr[1];
-                    himawariLayerArr[1].setOpacity(0);
-                    himawariLayerArr[0].setOpacity(opacityHimawari);
-                } else {
-                    himawariLayer = himawariLayerArr[0];
-                    himawariLayerArr[0].setOpacity(0);
-                    himawariLayerArr[1].setOpacity(opacityHimawari);
-                }
-
-                himawariLayer.setUrl(url2);
-                // himawariLayer.setUrl(url2);
-                var rest = 500;
-                while (himawariLayer.isLoading()) {
-                    await sleep(10);
-                    rest = rest - 10;
-                }
-                await sleep(rest);
-                if (!isPlay) {
-                    break;
-                }
-                himawariInfo.setText(`☁ ▶:${baseTimeDt}`);
-            }
-            if (himawariLayer === himawariLayerArr[0]) {
-                himawariLayerArr[1].setOpacity(opacityHimawari);
-                himawariLayerArr[0].setOpacity(0);
-            } else {
-                himawariLayerArr[1].setOpacity(opacityHimawari);
-                himawariLayerArr[0].setOpacity(0);
-            }
-            isPlay = false;
         }
 
         // 初期化時にモードをチェック（既存のコードの後に追加）
