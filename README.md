@@ -4,7 +4,7 @@
 
 ## 公開URL
 
-https://michan06.github.io/nowcast/
+https://michan06.github.io/nowcast/index_nowcast_rep.html
 
 ## 機能
 
