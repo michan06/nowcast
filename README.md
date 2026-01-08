@@ -23,7 +23,7 @@ https://michan06.github.io/nowcast/index_nowcast_rep.html
 
 ## 技術スタック
 
-- Leaflet.js 1.7.1
+- Leaflet.js 2.0.0-alpha.1（ESMモジュール）
 - moment.js 2.29.1
 - 国土地理院タイル
 - 気象庁API

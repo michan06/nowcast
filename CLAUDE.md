@@ -9,10 +9,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 技術スタック
 
 - **フロントエンド**: 純粋なHTML/JavaScript（ビルドツール不要）
-- **地図ライブラリ**: Leaflet.js 1.7.1
+- **地図ライブラリ**: Leaflet.js 2.0.0-alpha.1（ESMモジュール）
 - **日時処理**: moment.js 2.29.1
 - **UIフレームワーク**: Bootstrap 5.0.2（index_top.htmlのみ）
 - **地図タイル**: 国土地理院タイル
+
+### Leaflet 2.0移行メモ（index_nowcast_rep.html）
+- ESM importmapを使用してLeafletをインポート
+- ファクトリメソッド廃止: `L.map()` → `new LeafletMap()`, `L.tileLayer()` → `new TileLayer()` 等
+- `L.Control.extend({})` → `class extends Control {}` (ES6クラス構文)
+- グローバル変数`L`は使用せず、必要なクラスを個別にインポート
+- **重要**: Controlのposition設定は`super({ position: 'bottomleft' })`でコンストラクタに渡す（クラスフィールド`options = {}`では効かない）
 
 ## ファイル構成
 

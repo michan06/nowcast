@@ -4,12 +4,14 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-        crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
-        integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
-        crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@2.0.0-alpha.1/dist/leaflet.css" crossorigin="" />
+    <script type="importmap">
+        {
+            "imports": {
+                "leaflet": "https://unpkg.com/leaflet@2.0.0-alpha.1/dist/leaflet.js"
+            }
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
         integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
         crossorigin="anonymous"></script>
@@ -101,7 +103,17 @@
 
 <body>
     <div id="map"></div>
-    <script>
+    <script type="module">
+        import {
+            Map as LeafletMap,
+            TileLayer,
+            Control,
+            DomUtil,
+            DomEvent,
+            CircleMarker,
+            LatLng
+        } from 'leaflet';
+
         var nowCastLayer;
         var nowCastLayerArr = [];
         var himawariLayer;
@@ -117,7 +129,12 @@
         var isManualHimawariMode = false; // 手動でモード切替した場合true（自動切替を無効化）
         var lastIsDaytime = null; // 前回の昼夜状態（昼夜切替検知用）
         var playInfoButton;
-        var map = L.map('map').fitWorld();
+        var nowcastInfo;
+        var speedButton;
+        var nowcastButton;
+        var himawariButton;
+        var trueColorButton;
+        var map = new LeafletMap('map').fitWorld();
         map.setView([35.653918, 139.857864], 8);
 
         // 現在位置のマーカーを保持する変数を追加（変数宣言部分に追加）
@@ -127,7 +144,7 @@
         async function updateCurrentLocation() {
             try {
                 const position = await getCurrentPosition();
-                const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+                const latlng = new LatLng(position.coords.latitude, position.coords.longitude);
 
                 // 前回の位置と比較（100m以上移動している場合にスクロール）
                 const shouldScroll = currentLocationMarker === null ||
@@ -137,7 +154,7 @@
                 if (currentLocationMarker) {
                     currentLocationMarker.setLatLng(latlng);
                 } else {
-                    currentLocationMarker = L.circleMarker(latlng, {
+                    currentLocationMarker = new CircleMarker(latlng, {
                         radius: 10,
                         color: '#800000'
                     }).addTo(map);
@@ -162,7 +179,7 @@
         // 既存のonLocationFound関数を修正
         function onLocationFound(e) {
             const latlng = e.latlng;
-            currentLocationMarker = L.circleMarker(latlng, {
+            currentLocationMarker = new CircleMarker(latlng, {
                 radius: 10,
                 color: '#800000'
             }).addTo(map);
@@ -204,26 +221,26 @@
         });
         //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
         // 白地図（ひまわり表示時用）
-        var blankLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
+        var blankLayer = new TileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
             attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
         });
         // 衛星写真（ひまわり非表示時用）
-        var seamlessPhotoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+        var seamlessPhotoLayer = new TileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
             attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
         });
         blankLayer.addTo(map);
         const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
 
 
-        var refreshButton = L.Control.extend({
-            options: {
-                position: 'topleft'
-            },
-            onAdd: function (m) {
-                var btn = L.DomUtil.create('button', 'leaflet-control-button fontLarge')
+        class RefreshButton extends Control {
+            constructor() {
+                super({ position: 'topleft' });
+            }
+            onAdd(m) {
+                var btn = DomUtil.create('button', 'leaflet-control-button fontLarge')
                 btn.innerText = '🔄'
                 btn.style.minWidth = '50px';
-                L.DomEvent.on(btn, 'click', function () {
+                DomEvent.on(btn, 'click', function () {
                     isPlay = false;
                     // 自動切替を再有効化
                     isManualHimawariMode = false;
@@ -237,19 +254,20 @@
                 })
                 return btn
             }
-        })
-        map.addControl(new refreshButton())
+        }
+        map.addControl(new RefreshButton())
 
         // https://gist.github.com/ejh/2935327
-        L.Control.layerButton = L.Control.extend({
-            options: {
-                position: 'bottomleft'
-            },
-            initialize: function (options) {
-                this._button = {};
+        class LayerButton extends Control {
+            _button = {};
+            button = null;
+
+            constructor(options) {
+                super({ position: options.position || 'bottomleft' });
                 this.setButton(options);
-            },
-            setButton: function (options) {
+            }
+
+            setButton(options) {
                 var button = {
                     'text': options.text,                 //string
                     'iconUrl': options.iconUrl,           //string
@@ -263,51 +281,55 @@
                 };
                 console.log(`${JSON.stringify(button)}`);
                 this._button = button;
-                // this._update();
-            },
-            onAdd: function (map) {
+            }
+
+            onAdd(map) {
                 // leaflet-buttons-control-toggleon
-                this.button = L.DomUtil.create('button', 'leaflet-control-button fontLarge');
+                this.button = DomUtil.create('button', 'leaflet-control-button fontLarge');
                 this.button.innerText = this._button.text;
                 this.button.position = this._button.position;
-                // this.button.addClass('fontLarge');
 
-                L.DomEvent
-                    .addListener(this.button, 'click', this.onClick, this)
-                // .addListener(this.button, 'click', this._button.onClick,this)
+                DomEvent.on(this.button, 'click', this.onClick, this);
                 return this.button;
-            },
-            onRemove: function (map) {
+            }
+
+            onRemove(map) {
                 // Nothing to do here
-            },
-            setText: function (text) {
+            }
+
+            setText(text) {
                 this.button.innerText = text;
                 this._button.text = text;
-
                 return this._button.text;
-            },
-            onClick: function () {
+            }
+
+            onClick() {
                 console.log(`onclick:${this._button.toggleStatus}`);
                 this._button.onClick();
                 this._button.toggleStatus = !this._button.toggleStatus;
-            },
-            getToggleStatus: function () {
+            }
+
+            getToggleStatus() {
                 console.log('getToggleStatus');
                 return (this._button.toggleStatus);
-            },
-        });
+            }
+        }
 
-        L.Control.buttonInfo = function (opts) {
-            return new L.Control.layerButton(opts);
+        function createButtonInfo(opts) {
+            return new LayerButton(opts);
         }
 
         // 再生ボタンと速度ボタンを横並びにするコントロール
-        var playControlGroup = L.Control.extend({
-            options: {
-                position: 'bottomleft'
-            },
-            onAdd: function (map) {
-                var container = L.DomUtil.create('div', 'leaflet-bar');
+        class PlayControlGroup extends Control {
+            playButton = null;
+            speedButton = null;
+
+            constructor() {
+                super({ position: 'bottomleft' });
+            }
+
+            onAdd(map) {
+                var container = DomUtil.create('div', 'leaflet-bar');
                 container.style.display = 'flex';
                 container.style.flexDirection = 'row';
                 container.style.gap = '4px';
@@ -316,28 +338,30 @@
                 container.style.boxShadow = 'none';
 
                 // 再生ボタン
-                this.playButton = L.DomUtil.create('button', 'leaflet-control-button fontLarge', container);
+                this.playButton = DomUtil.create('button', 'leaflet-control-button fontLarge', container);
                 this.playButton.innerText = 'Nowcast';
                 this.playButton.style.minWidth = '160px';
-                L.DomEvent.on(this.playButton, 'click', playBoth);
+                DomEvent.on(this.playButton, 'click', playBoth);
 
                 // 速度ボタン
-                this.speedButton = L.DomUtil.create('button', 'leaflet-control-button fontLarge', container);
+                this.speedButton = DomUtil.create('button', 'leaflet-control-button fontLarge', container);
                 this.speedButton.innerText = '2x';
                 this.speedButton.style.minWidth = '50px';
-                L.DomEvent.on(this.speedButton, 'click', toggleSpeed);
+                DomEvent.on(this.speedButton, 'click', toggleSpeed);
 
                 return container;
-            },
-            setPlayText: function (text) {
+            }
+
+            setPlayText(text) {
                 this.playButton.innerText = text;
-            },
-            setSpeedText: function (text) {
+            }
+
+            setSpeedText(text) {
                 this.speedButton.innerText = text;
             }
-        });
+        }
 
-        var playControl = new playControlGroup();
+        var playControl = new PlayControlGroup();
         playControl.addTo(map);
 
         // nowcastInfoとspeedButtonの互換性のためのラッパー
@@ -349,12 +373,12 @@
             setText: function (text) { playControl.setSpeedText(text); }
         };
 
-        nowcastButton = L.Control.buttonInfo({ position: 'topright', text: '🌧️ Nowcast', toggle: true, toggleStatus: true, onClick: toggleNowCast })
+        nowcastButton = createButtonInfo({ position: 'bottomleft', text: '🌧️ Nowcast', toggle: true, toggleStatus: true, onClick: toggleNowCast })
         nowcastButton.addTo(map);
-        himawariButton = L.Control.buttonInfo({ position: 'topright', text: '🛰️ Himawari', toggle: true, toggleStatus: true, onClick: toggleHimawari })
+        himawariButton = createButtonInfo({ position: 'bottomleft', text: '🛰️ Himawari', toggle: true, toggleStatus: true, onClick: toggleHimawari })
         himawariButton.addTo(map);
 
-        trueColorButton = L.Control.buttonInfo({ position: 'bottomleft', text: '🌈 TrueColor', toggle: true, toggleStatus: true, onClick: toggleTrueColor })
+        trueColorButton = createButtonInfo({ position: 'bottomleft', text: '🌈 TrueColor', toggle: true, toggleStatus: true, onClick: toggleTrueColor })
         trueColorButton.addTo(map);
 
         // map.setView([35.653918,139.857864], 8);
@@ -481,14 +505,14 @@
             if (!nowCastLayer) {
                 // 
                 console.log(`new nowCastLayer`);
-                nowCastLayer = L.tileLayer(url, {
+                nowCastLayer = new TileLayer(url, {
                     zIndex: 20, maxNativeZoom: 10, opacity: opacityNowCast,
                     attribution: "<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"
                 });
                 nowCastLayer.addTo(map);
                 // layerControl.addOverlay(nowCastLayer,`Nowcast`);
                 nowCastLayerArr[0] = nowCastLayer;
-                nowCastLayerArr[1] = L.tileLayer(url, {
+                nowCastLayerArr[1] = new TileLayer(url, {
                     zIndex: 20, maxNativeZoom: 10, opacity: opacityNowCast,
                     attribution: "<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"
                 });
@@ -542,14 +566,14 @@
             console.log(url);
             if (!himawariLayer) {
                 console.log(`new himawariLayer`);
-                himawariLayer = L.tileLayer(url, {
+                himawariLayer = new TileLayer(url, {
                     zIndex: 10, maxNativeZoom: 6, opacity: opacityHimawari,
                     attribution: "<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり赤外画像</a>"
                 });
                 himawariLayer.addTo(map);
                 // layerControl.addOverlay(himawariLayer,`Himawari`);
                 himawariLayerArr[0] = himawariLayer;
-                himawariLayerArr[1] = L.tileLayer(url, {
+                himawariLayerArr[1] = new TileLayer(url, {
                     zIndex: 10, maxNativeZoom: 6, opacity: opacityHimawari,
                     attribution: "<a href='https://www.jma.go.jp/bosai/map.html#5/34.5/137/&elem=strengthen&contents=himawari' target='_blank'>気象衛星ひまわり赤外画像</a>"
                 });
@@ -737,7 +761,7 @@
             [37.014244, 138.652698], // 津南
             [36.881936, 138.638919]  // 大赤沢
         ].forEach(coords => {
-            L.circleMarker(coords, { radius: 7, color: '#800000' }).addTo(map);
+            new CircleMarker(coords, { radius: 7, color: '#800000' }).addTo(map);
         });
 
     </script>
