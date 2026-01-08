@@ -230,6 +230,10 @@
                     console.log('Auto mode re-enabled by refresh button');
                     refreshHimawari();
                     refreshNowCast();
+                    // 初回位置取得成功時のみ現在位置を更新
+                    if (currentLocationMarker) {
+                        updateCurrentLocation();
+                    }
                 })
                 return btn
             }

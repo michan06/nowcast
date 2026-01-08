@@ -41,6 +41,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ナウキャスト: 5分間隔
 - ひまわり: 2.5分間隔
 - 現在位置: 5分間隔（index_nowcast_rep.html）
+- 🔄ボタン: 全データ＋現在位置を手動更新（初回位置取得成功時のみ）
 
 ### 昼夜自動切替（index_nowcast_rep.html）
 5時〜18時はトゥルーカラー画像、それ以外は赤外画像に自動切替。
