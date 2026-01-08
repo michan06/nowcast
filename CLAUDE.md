@@ -49,11 +49,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 再生機能（index_nowcast_rep.html）
 - 過去データの連続再生機能（フレームスキップ方式）
 - 再生速度: 1x/2x/4x（デフォルト2x）
-- 再生中は■表示、停止中は▶表示
+- 再生中は⏸表示、停止中は▶️表示
 
 ### 背景地図切替（index_nowcast_rep.html）
 - ひまわり表示時: 白地図（blankLayer）
 - ひまわり非表示時: 衛星写真（seamlessPhotoLayer）でナウキャストデータを見やすく
+
+### UIデザイン（index_nowcast_rep.html）
+- 半透明ダークテーマ（背景: rgba(30, 30, 30, 0.85)）
+- Leafletズームボタンも同じテーマに統一
+- トグルボタン: アイコン+テキスト（🌧️ Nowcast, 🛰️ Himawari, 🌈 TrueColor/🌙 IR）
+- OFF状態は半透明で状態を表現
 
 ## 開発・デプロイ
 

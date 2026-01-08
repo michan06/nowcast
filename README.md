@@ -13,6 +13,7 @@ https://michan06.github.io/nowcast/
 - トゥルーカラー/赤外画像の切替（昼夜自動切替対応）
 - 過去データの連続再生（1x/2x/4x速度切替）
 - 現在位置表示
+- 半透明ダークテーマUI
 
 ### index_himawari_truecolor.html
 - ひまわり衛星の全天トゥルーカラー再現画像のスライドショー表示

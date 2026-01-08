@@ -29,28 +29,72 @@
         }
 
         .fontLarge {
-            font-size: x-large;
-            padding: 0.35em;
-            margin: 0.15em;
+            font-size: large;
+            padding: 0.5em 0.8em;
+            margin: 0.1em;
         }
 
         .leaflet-control-button {
-            min-width: 200px;
-            /* "Hide Himawari" に合わせて幅を広げる */
+            min-width: 140px;
             text-align: center;
-            margin: 5px !important;
             white-space: nowrap;
-            padding: 0.35em;
+            background: rgba(30, 30, 30, 0.85);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
         }
 
-        .bottom-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            z-index: 1000;
+        .leaflet-control-button:hover {
+            background: rgba(60, 60, 60, 0.9);
+        }
+
+        .leaflet-control-button:active {
+            transform: scale(0.97);
+        }
+
+        /* Leafletズームボタンのダークテーマ */
+        .leaflet-control-zoom {
+            border: none !important;
+            border-radius: 6px !important;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .leaflet-control-zoom a {
+            background: rgba(30, 30, 30, 0.85) !important;
+            color: #fff !important;
+            border: none !important;
+            width: 36px !important;
+            height: 36px !important;
+            line-height: 36px !important;
+            transition: background 0.2s;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(60, 60, 60, 0.9) !important;
+            color: #fff !important;
+        }
+
+        .leaflet-control-zoom-in {
+            border-radius: 6px 6px 0 0 !important;
+        }
+
+        .leaflet-control-zoom-out {
+            border-radius: 0 0 6px 6px !important;
+        }
+
+        /* トグルボタンOFF状態 */
+        .leaflet-control-button.toggle-off {
+            background: rgba(30, 30, 30, 0.5);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .leaflet-control-button.toggle-off:hover {
+            background: rgba(50, 50, 50, 0.6);
         }
     </style>
 </head>
@@ -178,6 +222,7 @@
             onAdd: function (m) {
                 var btn = L.DomUtil.create('button', 'leaflet-control-button fontLarge')
                 btn.innerText = '🔄'
+                btn.style.minWidth = '50px';
                 L.DomEvent.on(btn, 'click', function () {
                     isPlay = false;
                     // 自動切替を再有効化
@@ -261,11 +306,15 @@
                 var container = L.DomUtil.create('div', 'leaflet-bar');
                 container.style.display = 'flex';
                 container.style.flexDirection = 'row';
+                container.style.gap = '4px';
+                container.style.background = 'transparent';
+                container.style.border = 'none';
+                container.style.boxShadow = 'none';
 
                 // 再生ボタン
                 this.playButton = L.DomUtil.create('button', 'leaflet-control-button fontLarge', container);
                 this.playButton.innerText = 'Nowcast';
-                this.playButton.style.minWidth = '200px';
+                this.playButton.style.minWidth = '160px';
                 L.DomEvent.on(this.playButton, 'click', playBoth);
 
                 // 速度ボタン
@@ -296,12 +345,12 @@
             setText: function (text) { playControl.setSpeedText(text); }
         };
 
-        nowcastButton = L.Control.buttonInfo({ position: 'topright', text: 'Hide Nowcast', toggle: true, toggleStatus: true, onClick: toggleNowCast })
+        nowcastButton = L.Control.buttonInfo({ position: 'topright', text: '🌧️ Nowcast', toggle: true, toggleStatus: true, onClick: toggleNowCast })
         nowcastButton.addTo(map);
-        himawariButton = L.Control.buttonInfo({ position: 'topright', text: 'Hide Himawari', toggle: true, toggleStatus: true, onClick: toggleHimawari })
+        himawariButton = L.Control.buttonInfo({ position: 'topright', text: '🛰️ Himawari', toggle: true, toggleStatus: true, onClick: toggleHimawari })
         himawariButton.addTo(map);
 
-        trueColorButton = L.Control.buttonInfo({ position: 'bottomleft', text: 'TrueColor', toggle: true, toggleStatus: true, onClick: toggleTrueColor })
+        trueColorButton = L.Control.buttonInfo({ position: 'bottomleft', text: '🌈 TrueColor', toggle: true, toggleStatus: true, onClick: toggleTrueColor })
         trueColorButton.addTo(map);
 
         // map.setView([35.653918,139.857864], 8);
@@ -313,20 +362,20 @@
 
         function toggleNowCast() {
             if (nowcastButton.getToggleStatus()) {
-                nowcastButton.setText('Show Nowcast');
+                nowcastButton.button.classList.add('toggle-off');
                 console.log('toggle to off');
                 nowCastLayer.setOpacity(0);
                 nowCastLayerArr[0].setOpacity(0);
                 nowCastLayerArr[1].setOpacity(0);
             } else {
-                nowcastButton.setText('Hide Nowcast');
+                nowcastButton.button.classList.remove('toggle-off');
                 nowCastLayer.setOpacity(opacityNowCast);
                 console.log('toggle to on');
             }
         }
         function toggleHimawari() {
             if (himawariButton.getToggleStatus()) {
-                himawariButton.setText('Show Himawari');
+                himawariButton.button.classList.add('toggle-off');
                 console.log('toggle to off');
                 himawariLayer.setOpacity(0);
                 himawariLayerArr[0].setOpacity(0);
@@ -335,7 +384,7 @@
                 map.removeLayer(blankLayer);
                 seamlessPhotoLayer.addTo(map);
             } else {
-                himawariButton.setText('Hide Himawari');
+                himawariButton.button.classList.remove('toggle-off');
                 himawariLayer.setOpacity(opacityHimawari);
                 console.log('toggle to on');
                 // 白地図に切り替え
@@ -349,10 +398,10 @@
             isManualHimawariMode = true;
 
             if (optHimawari === 'B13/TBB') {
-                trueColorButton.setText('TrueColor');
+                trueColorButton.setText('🌈 TrueColor');
                 optHimawari = 'REP/ETC';
             } else {
-                trueColorButton.setText('IR');
+                trueColorButton.setText('🌙 IR');
                 optHimawari = 'B13/TBB';
             }
             console.log(`Manual switch to ${optHimawari}`);
@@ -395,13 +444,13 @@
             if (isDaytime && optHimawari === 'B13/TBB') {
                 // 昼間なのにIRモードの場合、TrueColorに切り替え
                 optHimawari = 'REP/ETC';
-                trueColorButton.setText('TrueColor');
+                trueColorButton.setText('🌈 TrueColor');
                 console.log('Auto switching to TrueColor (daytime)');
                 refreshHimawari();
             } else if (!isDaytime && optHimawari === 'REP/ETC') {
                 // 夜間なのにTrueColorモードの場合、IRに切り替え
                 optHimawari = 'B13/TBB';
-                trueColorButton.setText('IR');
+                trueColorButton.setText('🌙 IR');
                 console.log('Auto switching to IR (nighttime)');
                 refreshHimawari();
             }
@@ -468,7 +517,7 @@
                     }
                 }
             }
-            nowcastInfo.setText(`▶:${baseTimeDt}`);
+            nowcastInfo.setText(`▶️ ${baseTimeDt}`);
         }
 
         // https://www.jma.go.jp/bosai/himawari/data/satimg/20210406040000/jp/20210406040000/B13/TBB/6/54/26.jpg
@@ -537,8 +586,8 @@
             }
             isPlay = true;
 
-            // 再生開始時に■を表示
-            nowcastInfo.setText('■ 停止');
+            // 再生開始時に⏸を表示
+            nowcastInfo.setText('⏸ ...');
 
             // playSpeed分スキップしながらループ（2xなら1つ飛ばし、4xなら3つ飛ばし）
             for (let i = 0; i < playTimelist.length; i += playSpeed) {
@@ -616,7 +665,7 @@
                     await sleep(500);
                     if (!isPlay) break;
 
-                    nowcastInfo.setText(`■${playSpeed}x:${baseTimeDt}`);
+                    nowcastInfo.setText(`⏸ ${baseTimeDt}`);
 
                 } catch (error) {
                     console.warn('Error in animation frame:', error);
@@ -649,9 +698,9 @@
             if (nowCastTimeList && nowCastTimeList.length > 0) {
                 const baseTime = nowCastTimeList[0]['basetime'];
                 const baseTimeDt = moment(baseTime + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
-                nowcastInfo.setText(`▶:${baseTimeDt}`);
+                nowcastInfo.setText(`▶️ ${baseTimeDt}`);
             } else {
-                nowcastInfo.setText('▶ 再生');
+                nowcastInfo.setText('▶️ --:--');
             }
         }
 
