@@ -199,12 +199,17 @@
         // 気象庁のナウキャストタイルは偶数ズームレベルのみ提供されるため、
         // 奇数ズームレベルでは1つ下の偶数レベルのタイルを拡大表示する
         let currentMaxNativeZoom = 10;
-        function updateNowCastMaxNativeZoom(zoomLevel, forceRedraw = false) {
-            // 奇数なら1つ下の偶数に、偶数ならそのまま（ただし最大10）
-            const maxNative = Math.min(zoomLevel % 2 === 0 ? zoomLevel : zoomLevel - 1, 10);
 
-            // 値が変わらなければ何もしない（ただしforceRedrawがtrueの場合は実行）
-            if (maxNative === currentMaxNativeZoom && !forceRedraw) {
+        function calculateMaxNativeZoom(zoomLevel) {
+            // 奇数なら1つ下の偶数に、偶数ならそのまま（ただし最大10）
+            return Math.min(zoomLevel - (zoomLevel % 2), 10);
+        }
+
+        function updateNowCastMaxNativeZoom(zoomLevel) {
+            const maxNative = calculateMaxNativeZoom(zoomLevel);
+
+            // 値が変わらなければ何もしない
+            if (maxNative === currentMaxNativeZoom) {
                 return;
             }
             currentMaxNativeZoom = maxNative;
@@ -234,8 +239,7 @@
         });
 
         map.on('zoomend', () => {
-            const currentZoom = map.getZoom();
-            updateNowCastMaxNativeZoom(currentZoom);
+            updateNowCastMaxNativeZoom(map.getZoom());
         });
         //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
         // 白地図（ひまわり表示時用）
