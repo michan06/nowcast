@@ -28,6 +28,11 @@ https://michan06.github.io/nowcast/index_nowcast_rep.html
 - 国土地理院タイル
 - 気象庁API
 
+## 補足事項
+
+- 気象庁のナウキャストタイルは偶数ズームレベル（4, 6, 8, 10）のみ提供されています
+- 奇数ズームレベル（5, 7, 9）では、1つ下の偶数レベルのタイルを拡大表示しています
+
 ## ライセンス
 
 気象庁のデータは[気象庁ホームページについて](https://www.jma.go.jp/jma/kishou/info/coment.html)に基づき利用しています。
