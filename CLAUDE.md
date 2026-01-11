@@ -75,7 +75,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 公開URL: `https://michan06.github.io/nowcast/`
 
+### 奇数ズームレベル対応（index_nowcast_rep.html）
+気象庁のナウキャストタイルは偶数ズームレベル（4, 6, 8, 10）のみ提供。
+奇数ズームレベル（5, 7, 9）では`maxNativeZoom`を動的に変更し、1つ下の偶数レベルのタイルを拡大表示。
+- `zoomstart`: ズーム開始レベルを記録
+- `zoom`: ズームイン時は即座に`maxNativeZoom`を更新（高解像度タイル取得のため）
+- `zoomend`: 最終的な`maxNativeZoom`を確定
+
 ## 注意事項
 
 - 気象庁APIは公式ドキュメントが限定的。URLパターンはブラウザの開発者ツールで確認したもの
 - APIの仕様変更により動作しなくなる可能性あり
+- ナウキャストタイルは偶数ズームレベルのみ提供される

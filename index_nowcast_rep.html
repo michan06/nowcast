@@ -195,29 +195,47 @@
             console.warn('Location error:', e);
         });
 
-        // 現在のズーム方向を保持する変数
-        let startZoomLevel = 0;
-        let zoomingIn = true;
+        // ナウキャストレイヤーのmaxNativeZoomを動的に更新する関数
+        // 気象庁のナウキャストタイルは偶数ズームレベルのみ提供されるため、
+        // 奇数ズームレベルでは1つ下の偶数レベルのタイルを拡大表示する
+        let currentMaxNativeZoom = 10;
+        function updateNowCastMaxNativeZoom(zoomLevel, forceRedraw = false) {
+            // 奇数なら1つ下の偶数に、偶数ならそのまま（ただし最大10）
+            const maxNative = Math.min(zoomLevel % 2 === 0 ? zoomLevel : zoomLevel - 1, 10);
 
-        // ズーム方向を検知
+            // 値が変わらなければ何もしない（ただしforceRedrawがtrueの場合は実行）
+            if (maxNative === currentMaxNativeZoom && !forceRedraw) {
+                return;
+            }
+            currentMaxNativeZoom = maxNative;
+
+            nowCastLayerArr.forEach(layer => {
+                if (layer && layer.options) {
+                    layer.options.maxNativeZoom = maxNative;
+                    layer.redraw();
+                }
+            });
+            console.log(`Updated nowcast maxNativeZoom to ${maxNative} for zoom level ${zoomLevel}`);
+        }
+
+        // ズーム開始前のレベルを記録
+        let zoomStartLevel = 0;
         map.on('zoomstart', () => {
-            startZoomLevel = map.getZoom();
+            zoomStartLevel = map.getZoom();
         });
 
-        // ズームレベル変更時のイベントリスナーを設定
-        map.on('zoomend', () => {
-            const endZoomLevel = map.getZoom(); // 現在のズームレベルを取得
-            if (startZoomLevel < endZoomLevel) {
-                zoomingIn = true;
-            } else {
-                zoomingIn = false;
+        // ズームレベル変更時にmaxNativeZoomを更新
+        map.on('zoom', () => {
+            const currentZoom = map.getZoom();
+            // ズームインの場合は即座に更新（高解像度タイルを取得するため）
+            if (currentZoom > zoomStartLevel) {
+                updateNowCastMaxNativeZoom(currentZoom);
             }
+        });
 
-            if (endZoomLevel % 2 !== 0) { // 奇数かどうかを判定
-                const newZoomLevel = zoomingIn ? endZoomLevel + 1 : endZoomLevel - 1; // ズーム方向に応じて調整
-                console.log(`Adjusting zoom level from ${startZoomLevel} to ${endZoomLevel} => ${zoomingIn} = ${newZoomLevel}`);
-                map.setZoom(newZoomLevel); // ズームレベルを変更
-            }
+        map.on('zoomend', () => {
+            const currentZoom = map.getZoom();
+            updateNowCastMaxNativeZoom(currentZoom);
         });
         //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
         // 白地図（ひまわり表示時用）
@@ -517,7 +535,9 @@
                     attribution: "<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"
                 });
                 nowCastLayerArr[1].setOpacity(0);
-                nowCastLayerArr[1].addTo(map)
+                nowCastLayerArr[1].addTo(map);
+                // 初期ズームレベルでmaxNativeZoomを設定
+                updateNowCastMaxNativeZoom(map.getZoom());
             } else {
                 if (nowcastButton.getToggleStatus()) {
                     if (nowCastLayer === nowCastLayerArr[1]) {
