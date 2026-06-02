@@ -59,6 +59,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 再生速度: 1x/2x/4x（デフォルト2x）
 - 再生中は⏸表示、停止中は▶️表示
 
+### ナウキャスト色変換（index_nowcast_rep.html）
+標準の`TileLayer`を継承した`NowcastCanvasTileLayer`クラスでタイルを描画。
+`createTile()`をオーバーライドし、Canvas APIでピクセルを1つずつ走査して色変換を行う。
+- 白に近いピクセル（R>220, G>220, B>220, A>10）→ 薄い水色 RGB(200, 240, 248) に変換
+- それ以外（水色・黄・橙・赤・紫）はそのまま維持（強い雨の色は変えない）
+- 気象庁タイルがCORS非対応の場合は`getImageData()`が失敗するためtry/catchで握りつぶし、変換なしで表示
+- ひまわりTrueColor画像（雲が白）との重ね表示で、弱い雨を視覚的に区別しやすくするための機能
+
 ### 背景地図切替（index_nowcast_rep.html）
 - ひまわり表示時: 白地図（blankLayer）
 - ひまわり非表示時: 衛星写真（seamlessPhotoLayer）でナウキャストデータを見やすく

@@ -10,6 +10,7 @@ https://michan06.github.io/nowcast/index_nowcast_rep.html
 
 ### index_nowcast_rep.html（メイン）
 - 気象庁ナウキャスト（雨雲レーダー）とひまわり衛星画像をLeaflet地図上に重畳表示
+- ナウキャストの弱い雨（白）をCanvas処理で薄い水色に変換し、衛星画像の雲と区別しやすく表示
 - トゥルーカラー/赤外画像の切替（昼夜自動切替対応）
 - 過去データの連続再生（1x/2x/4x速度切替）
 - 現在位置表示

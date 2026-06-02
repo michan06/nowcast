@@ -134,6 +134,39 @@
         var nowcastButton;
         var himawariButton;
         var trueColorButton;
+        class NowcastCanvasTileLayer extends TileLayer {
+            createTile(coords, done) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    try {
+                        const imageData = ctx.getImageData(0, 0, 256, 256);
+                        const data = imageData.data;
+                        for (let i = 0; i < data.length; i += 4) {
+                            if (data[i+3] > 10 && data[i] > 220 && data[i+1] > 220 && data[i+2] > 220) {
+                                data[i]   = 200;
+                                data[i+1] = 240;
+                                data[i+2] = 248;
+                            }
+                        }
+                        ctx.putImageData(imageData, 0, 0);
+                    } catch (_) {
+                        // CORSブロック時はそのまま表示
+                    }
+                    done(null, canvas);
+                };
+                img.onerror = (e) => done(e, canvas);
+                img.src = this.getTileUrl(coords);
+                return canvas;
+            }
+        }
+
         var map = new LeafletMap('map').fitWorld();
         map.setView([35.653918, 139.857864], 8);
 
@@ -527,14 +560,14 @@
             if (!nowCastLayer) {
                 // 
                 console.log(`new nowCastLayer`);
-                nowCastLayer = new TileLayer(url, {
+                nowCastLayer = new NowcastCanvasTileLayer(url, {
                     zIndex: 20, maxNativeZoom: 10, opacity: opacityNowCast,
                     attribution: "<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"
                 });
                 nowCastLayer.addTo(map);
                 // layerControl.addOverlay(nowCastLayer,`Nowcast`);
                 nowCastLayerArr[0] = nowCastLayer;
-                nowCastLayerArr[1] = new TileLayer(url, {
+                nowCastLayerArr[1] = new NowcastCanvasTileLayer(url, {
                     zIndex: 20, maxNativeZoom: 10, opacity: opacityNowCast,
                     attribution: "<a href='https://www.jma.go.jp/bosai/nowc/' target='_blank'>雨雲の動き</a>"
                 });
