@@ -121,6 +121,8 @@
         var nowCastTimeList;
         var himawariTimeList;
         var playTimelist;
+        var latestTimeStr = null; // 取得済みの最新ナウキャスト時刻（YYYYMMDDHHmmss）
+        var currentTimeStr = null; // 現在表示中の時刻（戻る/進むボタンで変更、YYYYMMDDHHmmss）
         var isPlay = false;
         var playSpeed = 2; // 再生速度 (1: 通常, 2: 2倍速, 4: 4倍速) - フレームスキップで実現
         var opacityNowCast = 0.65;//0.85;
@@ -153,6 +155,51 @@
                                 data[i]   = 200;
                                 data[i+1] = 240;
                                 data[i+2] = 248;
+                            }
+                        }
+                        ctx.putImageData(imageData, 0, 0);
+                    } catch (_) {
+                        // CORSブロック時はそのまま表示
+                    }
+                    done(null, canvas);
+                };
+                img.onerror = (e) => done(e, canvas);
+                img.src = this.getTileUrl(coords);
+                return canvas;
+            }
+        }
+
+        // 白地図タイルの白い背景部分を透過させ、県境・海岸線などの線だけを
+        // 残して最前面に重ねられるようにするタイルレイヤー
+        class TransparentWhiteTileLayer extends TileLayer {
+            createTile(coords, done) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    try {
+                        const imageData = ctx.getImageData(0, 0, 256, 256);
+                        const data = imageData.data;
+                        for (let i = 0; i < data.length; i += 4) {
+                            const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                            if (brightness >= 210) {
+                                // 白背景 -> 完全に透過
+                                data[i + 3] = 0;
+                            } else {
+                                // 県境・市区町村境界線や文字など -> 色は常に黒に固定し
+                                // （背景の明暗に色が引きずられないように）、不透明度だけを
+                                // 明度に応じてなだらかに変化させる。これにより境界線の
+                                // アンチエイリアスやノイズが目立たず、文字も滑らかに残る
+                                const alphaFactor = Math.min(1, (210 - brightness) / 90);
+                                data[i] = 0;
+                                data[i + 1] = 0;
+                                data[i + 2] = 0;
+                                data[i + 3] = data[i + 3] * alphaFactor;
                             }
                         }
                         ctx.putImageData(imageData, 0, 0);
@@ -275,8 +322,10 @@
             updateNowCastMaxNativeZoom(map.getZoom());
         });
         //https://www.jma.go.jp/bosai/jmatile/data/nowc/20210405033000/none/20210405033000/surf/hrpns/10/910/404.png
-        // 白地図（ひまわり表示時用）
-        var blankLayer = new TileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
+        // 白地図（ひまわり表示時用）。白背景を透過させ、雲・雨レイヤーより
+        // 前面に重ねることで県境などが隠れないようにする
+        var blankLayer = new TransparentWhiteTileLayer('https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png', {
+            zIndex: 30,
             attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
         });
         // 衛星写真（ひまわり非表示時用）
@@ -378,6 +427,8 @@
         class PlayControlGroup extends Control {
             playButton = null;
             speedButton = null;
+            prevButton = null;
+            nextButton = null;
 
             constructor() {
                 super({ position: 'bottomleft' });
@@ -392,11 +443,23 @@
                 container.style.border = 'none';
                 container.style.boxShadow = 'none';
 
+                // 戻るボタン（1コマ＝5分前＝過去へ）
+                this.prevButton = DomUtil.create('button', 'leaflet-control-button fontLarge', container);
+                this.prevButton.innerText = '◀';
+                this.prevButton.style.minWidth = '44px';
+                DomEvent.on(this.prevButton, 'click', () => stepFrame(1));
+
                 // 再生ボタン
                 this.playButton = DomUtil.create('button', 'leaflet-control-button fontLarge', container);
                 this.playButton.innerText = 'Nowcast';
                 this.playButton.style.minWidth = '160px';
                 DomEvent.on(this.playButton, 'click', playBoth);
+
+                // 進むボタン（1コマ＝5分後＝最新へ）
+                this.nextButton = DomUtil.create('button', 'leaflet-control-button fontLarge', container);
+                this.nextButton.innerText = '▶';
+                this.nextButton.style.minWidth = '44px';
+                DomEvent.on(this.nextButton, 'click', () => stepFrame(-1));
 
                 // 速度ボタン
                 this.speedButton = DomUtil.create('button', 'leaflet-control-button fontLarge', container);
@@ -546,8 +609,10 @@
             });
             playTimelist = JSON.parse(JSON.stringify(nowCastTimeList));
             playTimelist.sort(function (a, b) {
-                return (a.baseTime < b.baseTime ? 1 : -1);
+                return (a.basetime < b.basetime ? 1 : -1);
             })
+            latestTimeStr = nowCastTimeList[0]['basetime'];
+            currentTimeStr = latestTimeStr; // 最新データ取得時は表示位置を先頭にリセット
 
             // console.log(nowCastTimeList);
             const baseTime = nowCastTimeList[0]['basetime'];
@@ -674,8 +739,10 @@
             // 再生開始時に⏸を表示
             nowcastInfo.setText('⏸ ...');
 
+            // playTimelist[0]が最新（インデックスが大きいほど過去）のため、
+            // 過去→現在の順に見えるよう末尾（最も過去）から0へ向かって再生する
             // playSpeed分スキップしながらループ（2xなら1つ飛ばし、4xなら3つ飛ばし）
-            for (let i = 0; i < playTimelist.length; i += playSpeed) {
+            for (let i = playTimelist.length - 1; i >= 0; i -= playSpeed) {
                 const time = playTimelist[i];
                 try {
                     const baseTime = time['basetime'];
@@ -748,6 +815,7 @@
                     });
 
                     await sleep(500);
+                    currentTimeStr = baseTime; // 戻る/進むボタンが再生停止位置から続けられるようにする
                     if (!isPlay) break;
 
                     nowcastInfo.setText(`⏸ ${baseTimeDt}`);
@@ -787,6 +855,115 @@
             } else {
                 nowcastInfo.setText('▶️ --:--');
             }
+        }
+
+        // 時刻文字列（YYYYMMDDHHmmss）をmoment分単位で加減算する
+        function shiftTimeStr(timeStr, minutesDelta) {
+            return moment(timeStr, "YYYYMMDDHHmmss").add(minutesDelta, 'minutes').format("YYYYMMDDHHmmss");
+        }
+
+        // 手動で1コマ分だけ前後に移動する。移動幅はPlayボタンと同じ再生速度
+        // （playSpeed: 1x/2x/4x）に連動し、5分・10分・20分と変化する。
+        // direction: 1 = 戻る（過去へ）, -1 = 進む（最新へ）
+        // 「進む」は取得済みの最新データまで、「戻る」はJMAのサーバーに
+        // タイルが実在する限り（気象庁の公式な配信期間である3時間より前でも）遡る
+        async function stepFrame(direction) {
+            if (!currentTimeStr || !latestTimeStr) return;
+            isPlay = false; // 再生中なら停止して手動操作を優先
+
+            const stepMinutes = 5 * playSpeed;
+
+            if (direction < 0) {
+                // 進む：最新時刻を超えないようにクランプ
+                if (currentTimeStr >= latestTimeStr) return;
+                let candidate = shiftTimeStr(currentTimeStr, stepMinutes);
+                if (candidate > latestTimeStr) candidate = latestTimeStr;
+                await showFrame(candidate);
+                return;
+            }
+
+            // 戻る：先にデータの実在を確認してから移動する
+            const candidate = shiftTimeStr(currentTimeStr, -stepMinutes);
+            const checkUrl = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${candidate}/none/${candidate}/surf/hrpns/8/227/99.png`;
+            const exists = await fetch(checkUrl, { method: 'HEAD' }).then(res => res.ok).catch(() => false);
+            if (!exists) {
+                const currentDt = moment(currentTimeStr + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
+                nowcastInfo.setText('⛔ これ以上遡れません');
+                setTimeout(() => {
+                    if (!isPlay) nowcastInfo.setText(`⏸ ${currentDt}`);
+                }, 1500);
+                return;
+            }
+            await showFrame(candidate);
+        }
+
+        // 指定時刻のコマをNowcast/Himawari両レイヤーに表示する
+        async function showFrame(timeStr) {
+            currentTimeStr = timeStr;
+
+            const baseTimeDt = moment(timeStr + " +0000", "YYYYMMDDHHmmss Z").format("HH:mm");
+
+            nowcastInfo.setText(`⏸ ${baseTimeDt}`);
+
+            const fullNowcastUrl = `https://www.jma.go.jp/bosai/jmatile/data/nowc/${timeStr}/none/${timeStr}/surf/hrpns/{z}/{x}/{y}.png`;
+            const fullHimawariUrl = `https://www.jma.go.jp/bosai/himawari/data/satimg/${timeStr}/jp/${timeStr}/${optHimawari}/{z}/{x}/{y}.jpg`;
+
+            const loadPromises = [];
+
+            if (nowcastButton.getToggleStatus()) {
+                if (nowCastLayer === nowCastLayerArr[0]) {
+                    nowCastLayer = nowCastLayerArr[1];
+                    nowCastLayerArr[1].setOpacity(0);
+                    nowCastLayerArr[0].setOpacity(opacityNowCast);
+                } else {
+                    nowCastLayer = nowCastLayerArr[0];
+                    nowCastLayerArr[0].setOpacity(0);
+                    nowCastLayerArr[1].setOpacity(opacityNowCast);
+                }
+                nowCastLayer.setUrl(fullNowcastUrl);
+                loadPromises.push(waitForLayerLoad(nowCastLayer));
+            }
+            if (himawariButton.getToggleStatus()) {
+                if (himawariLayer === himawariLayerArr[0]) {
+                    himawariLayer = himawariLayerArr[1];
+                    himawariLayerArr[1].setOpacity(0);
+                    himawariLayerArr[0].setOpacity(opacityHimawari);
+                } else {
+                    himawariLayer = himawariLayerArr[0];
+                    himawariLayerArr[0].setOpacity(0);
+                    himawariLayerArr[1].setOpacity(opacityHimawari);
+                }
+                himawariLayer.setUrl(fullHimawariUrl);
+                loadPromises.push(waitForLayerLoad(himawariLayer));
+            }
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Loading timeout')), 5000)
+            );
+            await Promise.race([Promise.all(loadPromises), timeoutPromise]).catch(error => {
+                console.warn('Layer loading error:', error);
+            });
+
+            if (nowcastButton.getToggleStatus()) {
+                if (nowCastLayer === nowCastLayerArr[0]) {
+                    nowCastLayerArr[0].setOpacity(opacityNowCast);
+                    nowCastLayerArr[1].setOpacity(0);
+                } else {
+                    nowCastLayerArr[1].setOpacity(opacityNowCast);
+                    nowCastLayerArr[0].setOpacity(0);
+                }
+            }
+            if (himawariButton.getToggleStatus()) {
+                if (himawariLayer === himawariLayerArr[0]) {
+                    himawariLayerArr[0].setOpacity(opacityHimawari);
+                    himawariLayerArr[1].setOpacity(0);
+                } else {
+                    himawariLayerArr[1].setOpacity(opacityHimawari);
+                    himawariLayerArr[0].setOpacity(0);
+                }
+            }
+
+            nowcastInfo.setText(`${timeStr === latestTimeStr ? '▶️' : '⏸'} ${baseTimeDt}`);
         }
 
         // レイヤーの読み込み完了を待つヘルパー関数
